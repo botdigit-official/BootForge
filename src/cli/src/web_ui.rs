@@ -668,8 +668,8 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
               <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); font-family: var(--font-mono);">PARTITION SCHEME & FS</span>
               <div style="display: flex; gap: 6px;">
                 <select id="optPartitionScheme" class="btn-secondary" style="flex: 1;">
-                  <option value="GPT" selected>GPT (UEFI)</option>
-                  <option value="MBR">MBR (BIOS+UEFI)</option>
+                  <option value="MBR" selected>MBR (Universal BIOS + UEFI)</option>
+                  <option value="GPT">GPT (UEFI Only)</option>
                 </select>
                 <select id="optFilesystem" class="btn-secondary" style="flex: 1;">
                   <option value="ExFAT" selected>ExFAT (Mac+PC)</option>
