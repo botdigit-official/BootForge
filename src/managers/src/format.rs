@@ -278,18 +278,18 @@ pub fn format_disk_macos(
         _ => "MBRFormat",
     };
 
-    // 1. Universal Multi-Boot Partitioning via Apple diskutil
+    // 1. Universal Multi-Boot Partitioning via Apple diskutil (100M FAT16 ESP + Remainder ExFAT Data)
     let partition_output = Command::new("diskutil")
         .args([
             "partitionDisk",
             clean_id,
             "MBR",
-            "ExFAT",
-            label,
-            "250G",
             "MS-DOS FAT16",
             "VTOYEFI",
-            "150M",
+            "100M",
+            "ExFAT",
+            label,
+            "R",
         ])
         .output()
         .map_err(|e| e.to_string())?;
@@ -300,9 +300,15 @@ pub fn format_disk_macos(
         // 2. Install EFI Bootloader Assets to /Volumes/VTOYEFI
         let vtoy_mount = PathBuf::from("/Volumes/VTOYEFI");
         if vtoy_mount.exists() {
-            let efi_src = "/Volumes/Mac2TB/Botdigit/Developer/Projects/BootForge/src/managers/assets/ventoy_core/tool";
+            // Unpack and copy EFI binaries
+            let _ = Command::new("hdiutil")
+                .args(["attach", "-nobrowse", "/tmp/ventoy.disk.img"])
+                .output();
             let _ = Command::new("cp")
-                .args(["-R", &format!("{}/..", efi_src), "/Volumes/VTOYEFI/"])
+                .args(["-R", "/Volumes/VTOYEFI 1/*", "/Volumes/VTOYEFI/"])
+                .output();
+            let _ = Command::new("hdiutil")
+                .args(["detach", "/Volumes/VTOYEFI 1"])
                 .output();
         }
 
