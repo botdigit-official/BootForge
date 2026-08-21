@@ -285,6 +285,26 @@ pub fn format_disk_macos(
 
     if output.status.success() {
         let out_text = String::from_utf8_lossy(&output.stdout).to_string();
+
+        // Write x86 16-bit BIOS bootstrap code (boot.img bytes 0..440) to Sector 0 for Legacy BIOS (ThinkPad R400)
+        let boot_img_path = "/Volumes/Mac2TB/Botdigit/Developer/Projects/BootForge/src/managers/assets/boot/boot.img";
+        let raw_dev = format!("/dev/rdisk{}", clean_id);
+
+        if Path::new(boot_img_path).exists() {
+            // Unmount disk to allow writing MBR bootstrap
+            let _ = Command::new("diskutil").args(["unmountDisk", clean_id]).output();
+
+            // Write 440 bytes to sector 0
+            let dd_cmd = format!("dd if='{}' of='{}' bs=1 count=440 conv=notrunc", boot_img_path, raw_dev);
+            let _ = Command::new("osascript")
+                .args(["-e", &format!("do shell script \"{}\" with administrator privileges", dd_cmd)])
+                .output();
+
+            // Re-mount the volume
+            let _ = Command::new("diskutil").args(["mountDisk", clean_id]).output();
+            let _ = Command::new("diskutil").args(["mount", &format!("{}s1", clean_id)]).output();
+        }
+
         Ok(out_text)
     } else {
         let err_text = String::from_utf8_lossy(&output.stderr).to_string();
