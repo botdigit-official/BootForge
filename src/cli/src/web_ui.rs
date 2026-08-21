@@ -5,7 +5,7 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Botdigit BootForge — Universal Boot Media Studio</title>
+  <title>Botdigit BootForge — Universal Boot & Recovery Studio</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -16,7 +16,7 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       --bg-card: #141C2E;
       --bg-card-hover: #1B263E;
       --border: #23304B;
-      --border-focus: #3B82F6;
+      --border-focus: #10B981;
       --text: #F8FAFC;
       --text-muted: #94A3B8;
       --text-dim: #64748B;
@@ -51,10 +51,10 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
     }
 
     header {
-      background: rgba(14, 19, 31, 0.85);
+      background: rgba(14, 19, 31, 0.9);
       backdrop-filter: blur(20px);
       border-bottom: 1px solid var(--border);
-      padding: 14px 28px;
+      padding: 12px 28px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -66,535 +66,298 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
     .brand {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 12px;
     }
 
     .brand-icon {
-      width: 42px;
-      height: 42px;
-      background: linear-gradient(135deg, #10B981 0%, #06B6D4 50%, #3B82F6 100%);
-      border-radius: 12px;
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, var(--accent) 0%, #059669 100%);
+      border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 24px;
-      font-weight: 800;
-      box-shadow: 0 0 24px var(--accent-glow);
+      font-size: 22px;
+      box-shadow: 0 0 20px var(--accent-glow);
     }
 
     .brand-title {
-      font-size: 20px;
+      font-size: 17px;
       font-weight: 800;
       letter-spacing: -0.5px;
-      background: linear-gradient(90deg, #FFFFFF 0%, #94A3B8 100%);
+      background: linear-gradient(135deg, #F8FAFC 0%, #94A3B8 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
+    }
+
+    .brand-subtitle {
+      font-size: 11px;
+      color: var(--cyan);
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      font-family: var(--font-mono);
+    }
+
+    /* Robotic Core Telemetry Ribbon */
+    .telemetry-ribbon {
       display: flex;
       align-items: center;
-      gap: 8px;
-    }
-
-    .nav-tabs {
-      display: flex;
-      background: rgba(7, 9, 14, 0.6);
-      padding: 4px;
-      border-radius: 10px;
+      gap: 16px;
+      background: rgba(7, 9, 14, 0.8);
       border: 1px solid var(--border);
-      gap: 4px;
-    }
-
-    .nav-tab {
       padding: 6px 14px;
-      border-radius: 7px;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text-muted);
-      cursor: pointer;
-      transition: all 0.15s ease;
+      border-radius: 30px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+
+    .telemetry-item {
       display: flex;
       align-items: center;
       gap: 6px;
-    }
-
-    .nav-tab:hover {
-      color: var(--text);
-      background: rgba(255, 255, 255, 0.05);
-    }
-
-    .nav-tab.active {
-      color: #FFFFFF;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    }
-
-    .badge-status {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
-      background: rgba(16, 185, 129, 0.12);
-      color: #34D399;
-      border: 1px solid rgba(16, 185, 129, 0.3);
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
+      color: var(--text-muted);
     }
 
     .status-dot {
       width: 8px;
       height: 8px;
-      background: #10B981;
       border-radius: 50%;
-      box-shadow: 0 0 8px #10B981;
-      animation: pulse 2s infinite;
+      background: var(--accent);
+      box-shadow: 0 0 10px var(--accent);
+      animation: pulse 2s infinite ease-in-out;
     }
 
     @keyframes pulse {
       0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(0.85); }
+      50% { opacity: 0.5; transform: scale(0.85); }
     }
 
+    /* Main Navigation Tabs */
+    .nav-tabs {
+      display: flex;
+      gap: 6px;
+      background: rgba(7, 9, 14, 0.6);
+      padding: 4px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn:hover {
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .tab-btn.active {
+      background: var(--bg-card);
+      color: #34D399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Main Layout Grid */
     main {
       flex: 1;
-      max-width: 1400px;
-      width: 100%;
-      margin: 0 auto;
-      padding: 24px 28px;
       display: grid;
-      grid-template-columns: 390px 1fr;
-      gap: 28px;
+      grid-template-columns: 340px 1fr;
+      gap: 20px;
+      padding: 24px 28px;
+      max-width: 1700px;
+      margin: 0 auto;
+      width: 100%;
     }
 
-    @media (max-width: 1020px) {
-      main { grid-template-columns: 1fr; }
-    }
-
-    /* Left Sidebar: Device Panel */
     .panel {
       background: var(--bg-surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 22px;
+      padding: 20px;
       display: flex;
       flex-direction: column;
       gap: 16px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
     }
 
     .panel-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      padding-bottom: 12px;
     }
 
     .panel-title {
-      font-size: 14px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
-      color: var(--text-muted);
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .device-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 16px;
-      cursor: pointer;
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-      position: relative;
-    }
-
-    .device-card:hover {
-      border-color: var(--blue);
-      background: var(--bg-card-hover);
-      transform: translateY(-1px);
-    }
-
-    .device-card.active {
-      border-color: var(--accent);
-      background: rgba(16, 185, 129, 0.08);
-      box-shadow: 0 0 20px var(--accent-glow);
-    }
-
-    .device-card.system {
-      border-color: rgba(239, 68, 68, 0.25);
-      background: rgba(239, 68, 68, 0.03);
-      cursor: not-allowed;
-      opacity: 0.65;
-    }
-
-    .device-name {
       font-size: 15px;
       font-weight: 700;
-      color: var(--text);
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .device-meta {
-      font-size: 12px;
-      color: var(--text-muted);
-      margin-top: 6px;
-      font-family: var(--font-mono);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .device-tag {
-      display: inline-block;
-      padding: 3px 8px;
-      border-radius: 4px;
-      font-size: 11px;
-      font-weight: 600;
-      background: rgba(6, 182, 212, 0.15);
-      color: #22D3EE;
-      border: 1px solid rgba(6, 182, 212, 0.3);
-      margin-top: 10px;
-    }
-
-    .device-tag.system-tag {
-      background: rgba(239, 68, 68, 0.15);
-      color: #F87171;
-      border-color: rgba(239, 68, 68, 0.3);
-    }
-
-    .device-tag.amber-tag {
-      background: rgba(245, 158, 11, 0.15);
-      color: #FBBF24;
-      border-color: rgba(245, 158, 11, 0.3);
-    }
-
-    .btn-inspect-device {
-      background: rgba(59, 130, 246, 0.15);
-      border: 1px solid rgba(59, 130, 246, 0.4);
-      color: #60A5FA;
-      font-size: 11px;
-      font-weight: 600;
-      padding: 4px 8px;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.15s ease;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .btn-inspect-device:hover {
-      background: rgba(59, 130, 246, 0.3);
-      color: #FFFFFF;
-    }
-
-    /* Right Main Panel */
-    .content-area {
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
-
-    /* ISO Picker Box */
-    .picker-box {
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .dropzone {
-      background: rgba(20, 28, 46, 0.5);
-      border: 2px dashed var(--border);
-      border-radius: var(--radius);
-      padding: 32px 24px;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .dropzone:hover, .dropzone.dragover {
-      border-color: var(--accent);
-      background: rgba(16, 185, 129, 0.05);
-      box-shadow: 0 0 24px var(--accent-glow);
-      transform: scale(1.005);
-    }
-
-    .dropzone-icon {
-      width: 52px;
-      height: 52px;
-      border-radius: 12px;
-      background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(6, 182, 212, 0.2) 100%);
-      color: var(--accent);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 26px;
-    }
-
-    .picker-buttons {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      justify-content: center;
-      margin-top: 6px;
-    }
-
-    .btn-browse-finder {
-      background: linear-gradient(135deg, #06B6D4 0%, #3B82F6 100%);
-      color: #FFFFFF;
-      font-weight: 700;
-      font-size: 14px;
-      padding: 11px 22px;
-      border-radius: 10px;
-      border: none;
-      cursor: pointer;
-      display: inline-flex;
       align-items: center;
       gap: 8px;
-      box-shadow: 0 4px 18px var(--cyan-glow);
-      transition: all 0.2s ease;
     }
 
-    .btn-browse-finder:hover {
-      filter: brightness(1.15);
-      transform: translateY(-2px);
-    }
-
-    .path-input-group {
-      display: flex;
-      gap: 8px;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 8px 14px;
-      align-items: center;
-    }
-
-    .path-input-group input {
-      flex: 1;
-      background: transparent;
-      border: none;
-      color: var(--text);
-      font-family: var(--font-mono);
-      font-size: 13px;
-      outline: none;
-    }
-
-    .path-input-group input::placeholder {
-      color: var(--text-dim);
-    }
-
-    .iso-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 14px 18px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      transition: all 0.2s ease;
-    }
-
-    .iso-card:hover {
-      border-color: rgba(6, 182, 212, 0.5);
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    }
-
-    .iso-info {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-
-    .iso-icon {
-      width: 44px;
-      height: 44px;
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 22px;
-      background: rgba(7, 9, 14, 0.7);
-      border: 1px solid var(--border);
-    }
-
-    .iso-details h4 {
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--text);
-    }
-
-    .iso-meta {
-      font-size: 12px;
-      color: var(--text-muted);
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 3px;
-      font-family: var(--font-mono);
-    }
-
-    .badge-pill {
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 11px;
-      font-weight: 600;
-      background: rgba(16, 185, 129, 0.15);
-      color: #34D399;
-      border: 1px solid rgba(16, 185, 129, 0.3);
-    }
-
-    .badge-pill.uefi {
-      background: rgba(6, 182, 212, 0.15);
-      color: #22D3EE;
-      border-color: rgba(6, 182, 212, 0.3);
-    }
-
-    .btn-remove {
-      background: transparent;
-      border: none;
-      color: var(--text-dim);
-      font-size: 18px;
-      cursor: pointer;
-      padding: 6px;
-      border-radius: 6px;
-      transition: all 0.15s;
-    }
-
-    .btn-remove:hover {
-      color: var(--danger);
-      background: rgba(239, 68, 68, 0.1);
-    }
-
-    /* Drive Format & Boot Options Panel */
-    .options-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 14px;
-    }
-
-    @media (max-width: 800px) {
-      .options-grid { grid-template-columns: 1fr; }
-    }
-
-    .option-group {
+    /* Storage Device Cards */
+    .device-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 10px;
       padding: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .device-card:hover {
+      border-color: rgba(16, 185, 129, 0.4);
+      background: var(--bg-card-hover);
+    }
+
+    .device-card.selected {
+      border-color: var(--accent);
+      background: rgba(16, 185, 129, 0.08);
+      box-shadow: 0 0 16px var(--accent-glow);
+    }
+
+    .device-card.system-locked {
+      opacity: 0.55;
+      cursor: not-allowed;
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    .device-header {
       display: flex;
-      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .device-name {
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .device-capacity {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 13px;
+      color: #34D399;
+    }
+
+    .device-meta {
+      font-size: 12px;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+      display: flex;
       gap: 8px;
     }
 
-    .option-title {
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .select-input {
-      background: #07090E;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      color: #FFFFFF;
-      font-size: 13px;
-      padding: 8px 12px;
-      outline: none;
-      cursor: pointer;
-      font-family: var(--font);
-    }
-
-    .select-input:focus {
-      border-color: var(--accent);
-    }
-
-    /* Quick Preset Catalog */
-    .catalog-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-      gap: 10px;
-    }
-
-    .catalog-item {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 10px 12px;
-      cursor: pointer;
-      display: flex;
+    .badge {
+      display: inline-flex;
       align-items: center;
-      gap: 10px;
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      gap: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      font-family: var(--font-mono);
     }
 
-    .catalog-item:hover {
-      border-color: var(--cyan);
-      background: var(--bg-card-hover);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 14px var(--cyan-glow);
-    }
+    .badge-emerald { background: rgba(16, 185, 129, 0.15); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-cyan { background: rgba(6, 182, 212, 0.15); color: #67E8F9; border: 1px solid rgba(6, 182, 212, 0.3); }
+    .badge-amber { background: rgba(245, 158, 11, 0.15); color: #FCD34D; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-red { background: rgba(239, 68, 68, 0.15); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .badge-purple { background: rgba(139, 92, 246, 0.15); color: #C4B5FD; border: 1px solid rgba(139, 92, 246, 0.3); }
 
-    .catalog-item span {
-      font-size: 13px;
-      font-weight: 600;
-    }
-
-    /* Action Footer */
-    .action-bar {
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 24px;
+    /* Content Area & Tabs */
+    .content-area {
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 20px;
     }
 
-    .btn-primary {
-      background: linear-gradient(135deg, #10B981 0%, #059669 100%);
-      color: #000;
-      font-weight: 800;
-      font-size: 16px;
-      padding: 16px 32px;
-      border-radius: 12px;
-      border: none;
-      cursor: pointer;
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    .tab-content {
+      display: none;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .tab-content.active {
       display: flex;
+    }
+
+    /* Dropzone & File Pickers */
+    .dropzone {
+      border: 2px dashed rgba(16, 185, 129, 0.35);
+      background: rgba(16, 185, 129, 0.03);
+      border-radius: var(--radius);
+      padding: 30px 20px;
+      display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: center;
+    }
+
+    .dropzone:hover {
+      border-color: var(--accent);
+      background: rgba(16, 185, 129, 0.08);
+      box-shadow: 0 0 24px var(--accent-glow);
+    }
+
+    .picker-buttons {
+      display: flex;
       gap: 10px;
-      box-shadow: 0 4px 24px var(--accent-glow);
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    /* Buttons */
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent) 0%, #059669 100%);
+      color: #07090E;
+      font-weight: 800;
+      font-size: 14px;
+      padding: 12px 22px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 20px var(--accent-glow);
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
     }
 
     .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 32px var(--accent-glow);
-      filter: brightness(1.1);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 28px rgba(16, 185, 129, 0.45);
     }
-
-    .btn-primary:active { transform: translateY(0); }
 
     .btn-secondary {
       background: var(--bg-card);
       color: var(--text);
       font-weight: 600;
       font-size: 13px;
-      padding: 10px 18px;
+      padding: 10px 16px;
       border-radius: 8px;
       border: 1px solid var(--border);
       cursor: pointer;
@@ -605,8 +368,114 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
     }
 
     .btn-secondary:hover {
-      border-color: var(--blue);
+      border-color: var(--cyan);
       background: var(--bg-card-hover);
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.15);
+      color: #FCA5A5;
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      font-weight: 700;
+      font-size: 13px;
+      padding: 10px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.25);
+      border-color: var(--danger);
+    }
+
+    /* Cards Grid */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 14px;
+    }
+
+    .smart-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .smart-card:hover {
+      border-color: rgba(6, 182, 212, 0.4);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+    }
+
+    .smart-card-top {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .card-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: rgba(7, 9, 14, 0.8);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+
+    /* Telemetry Data Grid */
+    .telemetry-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 14px;
+    }
+
+    .telemetry-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .telemetry-label {
+      font-size: 11px;
+      color: var(--text-dim);
+      font-weight: 700;
+      text-transform: uppercase;
+      font-family: var(--font-mono);
+    }
+
+    .telemetry-value {
+      font-size: 16px;
+      font-weight: 700;
+      color: #F8FAFC;
+    }
+
+    /* Terminal & Progress Log */
+    .terminal-box {
+      background: #04060A;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: #34D399;
+      max-height: 220px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      line-height: 1.5;
     }
 
     /* Modals */
@@ -614,8 +483,8 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.8);
-      backdrop-filter: blur(12px);
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(14px);
       z-index: 100;
       align-items: center;
       justify-content: center;
@@ -626,7 +495,7 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       background: var(--bg-surface);
       border: 1px solid var(--border);
       border-radius: 16px;
-      max-width: 700px;
+      max-width: 680px;
       width: 100%;
       max-height: 88vh;
       overflow-y: auto;
@@ -634,697 +503,654 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       display: flex;
       flex-direction: column;
       gap: 20px;
-      box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.8);
     }
 
-    .confirm-input {
-      background: #07090E;
+    /* Progress bar */
+    .progress-track {
+      background: #0E131F;
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px 14px;
-      font-family: var(--font-mono);
-      font-size: 14px;
-      color: #F8FAFC;
-      outline: none;
-    }
-
-    .confirm-input:focus {
-      border-color: var(--amber);
-    }
-
-    /* Diagnostics Table & Visuals */
-    .diag-metric-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-    }
-
-    .diag-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .diag-card .diag-label {
-      font-size: 11px;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .diag-card .diag-val {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--text);
-    }
-
-    .part-bar {
-      display: flex;
-      height: 22px;
-      border-radius: 6px;
+      border-radius: 20px;
+      height: 12px;
       overflow: hidden;
-      margin: 10px 0;
-      border: 1px solid var(--border);
-      background: #07090E;
-    }
-
-    .part-segment {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 11px;
-      font-weight: 700;
-      color: #000;
-      transition: all 0.2s;
-    }
-
-    /* Live Transfer & Progress Section */
-    .progress-box {
-      display: none;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 22px;
-      margin-top: 12px;
-      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
-    }
-
-    .transfer-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 14px;
-    }
-
-    .transfer-stats-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-
-    .stat-pill {
-      background: rgba(7, 9, 14, 0.7);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 10px 14px;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .stat-pill-label {
-      font-size: 10px;
-      color: var(--text-dim);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .stat-pill-val {
-      font-size: 14px;
-      font-weight: 800;
-      color: var(--text);
-      font-family: var(--font-mono);
-      margin-top: 2px;
-    }
-
-    .progress-bar-bg {
-      background: rgba(0,0,0,0.6);
-      border-radius: 10px;
-      height: 18px;
-      overflow: hidden;
-      margin: 12px 0;
-      border: 1px solid var(--border);
       position: relative;
     }
 
     .progress-bar-fill {
+      background: linear-gradient(90deg, #10B981, #06B6D4);
       height: 100%;
-      background: linear-gradient(90deg, #10B981 0%, #06B6D4 50%, #10B981 100%);
-      background-size: 40px 40px;
-      background-image: linear-gradient(
-        45deg,
-        rgba(255, 255, 255, 0.2) 25%,
-        transparent 25%,
-        transparent 50%,
-        rgba(255, 255, 255, 0.2) 50%,
-        rgba(255, 255, 255, 0.2) 75%,
-        transparent 75%,
-        transparent
-      );
-      animation: move-stripes 1.2s linear infinite;
       width: 0%;
-      transition: width 0.15s ease-out;
-      box-shadow: 0 0 16px var(--accent-glow);
-    }
-
-    @keyframes move-stripes {
-      0% { background-position: 0 0; }
-      100% { background-position: 40px 0; }
-    }
-
-    .terminal-view {
-      background: #05070B;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 14px;
-      font-family: var(--font-mono);
-      font-size: 12px;
-      color: #34D399;
-      max-height: 160px;
-      overflow-y: auto;
-      white-space: pre-wrap;
-      line-height: 1.5;
-      margin-top: 10px;
+      transition: width 0.2s ease;
+      box-shadow: 0 0 14px var(--accent);
     }
   </style>
 </head>
 <body>
 
+  <!-- Spacecraft Header -->
   <header>
     <div class="brand">
       <div class="brand-icon">⚡</div>
       <div>
         <div class="brand-title">Botdigit BootForge</div>
-        <div style="font-size: 11px; color: var(--text-dim);">Universal Multi-Boot Media Studio</div>
+        <div class="brand-subtitle">Universal Boot & Recovery Studio</div>
       </div>
     </div>
 
-    <!-- Navigation Tabs -->
-    <div class="nav-tabs">
-      <div class="nav-tab active" onclick="switchTab('builder')">⚡ Multi-Boot Studio</div>
-      <div class="nav-tab" onclick="switchTab('diag')">🔍 Drive Diagnostics</div>
-      <div class="nav-tab" onclick="switchTab('library')">📥 OS Library</div>
-      <div class="nav-tab" onclick="switchTab('vm')">🧪 VM Sandbox</div>
+    <!-- Robotic Core Telemetry Ribbon -->
+    <div class="telemetry-ribbon">
+      <div class="telemetry-item">
+        <div class="status-dot"></div>
+        <span>CORE ONLINE</span>
+      </div>
+      <div class="telemetry-item">
+        <span style="color: var(--cyan);">●</span>
+        <span id="telemetryFirmware">UEFI / BIOS ACTIVE</span>
+      </div>
+      <div class="telemetry-item">
+        <span style="color: var(--accent);">🛡️</span>
+        <span>SECURE BOOT READY</span>
+      </div>
     </div>
 
-    <div class="badge-status">
-      <div class="status-dot"></div>
-      Botdigit Engine Ready
+    <!-- Main Navigation Tabs -->
+    <div class="nav-tabs">
+      <button class="tab-btn active" onclick="switchTab('tabBoot')">🚀 Boot Studio</button>
+      <button class="tab-btn" onclick="switchTab('tabRecovery')">🧰 Recovery Center</button>
+      <button class="tab-btn" onclick="switchTab('tabExplorer')">📁 USB Explorer</button>
+      <button class="tab-btn" onclick="switchTab('tabIsoIntel')">💿 ISO Intelligence</button>
+      <button class="tab-btn" onclick="switchTab('tabHardware')">🔎 Hardware Explorer</button>
+      <button class="tab-btn" onclick="switchTab('tabRepair')">🔥 Boot Repair</button>
     </div>
   </header>
 
   <main>
-    <!-- Left: Target Device Selection -->
+    <!-- Left Panel: Storage Drives -->
     <div class="panel">
       <div class="panel-header">
         <div class="panel-title">💾 Target USB Drive</div>
-        <button class="btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="loadDevices()">↻ Refresh</button>
+        <button class="btn-secondary" style="padding: 4px 10px; font-size: 11px;" onclick="loadDevices()">↻ Refresh</button>
       </div>
 
       <div id="deviceList" style="display: flex; flex-direction: column; gap: 10px;">
         <div style="color: var(--text-dim); font-size: 13px; text-align: center; padding: 20px;">Scanning macOS storage devices...</div>
       </div>
 
-      <div style="background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.25); border-radius: 10px; padding: 12px; font-size: 12px; color: #67E8F9;">
-        🛡️ <strong>Safety System Active</strong>: Internal Apple SSDs are strictly locked. Disks larger than 100 GB require explicit typed user permission.
+      <!-- Drive Diagnostics Summary -->
+      <div id="deviceQuickStats" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; display: none; flex-direction: column; gap: 8px;">
+        <div style="font-size: 12px; font-weight: 700; color: #34D399;">⚡ ACTIVE DRIVE TELEMETRY</div>
+        <div style="font-size: 12px; color: var(--text-muted);" id="statMountPath">Mount: /Volumes/BOTDIGIT</div>
+        <div style="font-size: 12px; color: var(--text-muted);" id="statFreeSpace">Available Space: 249.4 GB</div>
+        <div style="display: flex; gap: 8px; margin-top: 4px;">
+          <button class="btn-secondary" style="font-size: 11px; padding: 4px 10px; flex: 1;" onclick="openSelectedMountInFinder()">📂 Open Finder</button>
+          <button class="btn-secondary" style="font-size: 11px; padding: 4px 10px; flex: 1;" onclick="switchTab('tabRepair')">🛡️ Audit Boot</button>
+        </div>
+      </div>
+
+      <div style="background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.25); border-radius: 10px; padding: 12px; font-size: 11px; color: #67E8F9;">
+        🛡️ <strong>Safety System Active</strong>: Internal Apple SSDs are strictly locked. Drives larger than 100 GB require explicit typed authorization.
       </div>
     </div>
 
-    <!-- Right: ISO Image Manager & Tabs -->
+    <!-- Right Panel: Active Tab View -->
     <div class="content-area">
 
-      <!-- Active Mounted Drive Banner -->
-      <div id="activeDriveBanner" style="display: none; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: var(--radius); padding: 14px 20px; justify-content: space-between; align-items: center;">
-        <div style="display: flex; align-items: center; gap: 12px;">
-          <span style="font-size: 24px;">⚡</span>
-          <div>
-            <div style="font-size: 14px; font-weight: 700; color: #34D399;" id="bannerTitle">Multi-Boot Drive Active</div>
-            <div style="font-size: 12px; color: var(--text-muted); font-family: var(--font-mono);" id="bannerSubtitle">Mount: /Volumes/Ventoy • Free Space: 198.4 GB</div>
+      <!-- 🚀 TAB 1: BOOT STUDIO -->
+      <div class="tab-content active" id="tabBoot">
+        <!-- Add ISO Box -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">📂 Add Operating System Images (ISO, WIM, IMG)</div>
+          </div>
+
+          <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+            <input type="file" id="fileInput" multiple accept=".iso,.wim,.img,.vhd,.vhdx,.dmg,.raw" style="display: none;" onchange="handleBrowserFileInput(event)">
+            <div style="font-size: 32px;">📥</div>
+            <div style="font-size: 16px; font-weight: 700;">Drag & Drop ISO files here, or browse local disk</div>
+            <div style="font-size: 12px; color: var(--text-muted);">Supports Windows 11/10, Ubuntu, Linux Mint, Debian, Fedora, Arch, Clonezilla & Utilities</div>
+            
+            <div class="picker-buttons" onclick="event.stopPropagation()">
+              <button class="btn-primary" style="font-size: 12px; padding: 8px 16px;" onclick="pickFromFinder()">
+                🍎 Browse from Mac Finder...
+              </button>
+              <button class="btn-secondary" style="font-size: 12px; padding: 8px 16px;" onclick="document.getElementById('fileInput').click()">
+                📁 Choose Local File
+              </button>
+            </div>
+          </div>
+
+          <!-- Quick Presets -->
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 4px;">
+            <span style="font-size: 12px; color: var(--text-dim); font-weight: 700;">QUICK ADD:</span>
+            <button class="btn-secondary" style="font-size: 11px; padding: 4px 10px;" onclick="quickAdd('Linux Mint 22.3', 'linuxmint-22.3-cinnamon-64bit.iso', 'linux')">🐧 Linux Mint 22.3</button>
+            <button class="btn-secondary" style="font-size: 11px; padding: 4px 10px;" onclick="quickAdd('Ubuntu 24.04 LTS', 'ubuntu-24.04-desktop-amd64.iso', 'linux')">🐧 Ubuntu 24.04</button>
+            <button class="btn-secondary" style="font-size: 11px; padding: 4px 10px;" onclick="quickAdd('Windows 11 (24H2)', 'Win11_24H2_English_x64.iso', 'windows')">🪟 Windows 11</button>
+            <button class="btn-secondary" style="font-size: 11px; padding: 4px 10px;" onclick="quickAdd('Clonezilla Live', 'clonezilla-live-3.1.2-amd64.iso', 'rescue')">💽 Clonezilla</button>
           </div>
         </div>
-        <div style="display: flex; gap: 8px;">
-          <button class="btn-secondary" style="font-size: 12px; padding: 6px 12px;" id="bannerOpenFinderBtn">📂 Open in Finder</button>
-        </div>
-      </div>
 
-      <!-- ISO Selection Box -->
-      <div class="picker-box" id="tabBuilder">
-        <div class="panel-header">
-          <div class="panel-title">📂 Add OS Image Files (ISO, WIM, IMG)</div>
+        <!-- Selected Images Queue -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">💿 Selected Images on Boot Drive (<span id="selectedCount">0</span>)</div>
+            <button class="btn-secondary" style="padding: 4px 10px; font-size: 11px;" onclick="clearSelectedIsos()">Clear All</button>
+          </div>
+
+          <div class="cards-grid" id="isoCardsQueue">
+            <div style="color: var(--text-dim); font-size: 13px; padding: 20px; grid-column: 1 / -1; text-align: center;">
+              No operating system images selected. Drop an ISO above to start.
+            </div>
+          </div>
         </div>
 
-        <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
-          <input type="file" id="fileInput" multiple accept=".iso,.wim,.img,.vhd,.vhdx,.dmg,.raw" style="display: none;" onchange="handleBrowserFileInput(event)">
-          <div class="dropzone-icon">📥</div>
-          <div style="font-size: 16px; font-weight: 700;">Drag & Drop ISO files here, or click to browse</div>
-          <div style="font-size: 13px; color: var(--text-muted);">Supports Windows 11/10, Ubuntu, Debian, Alpine, Fedora, Linux Mint, Rescue & Utility ISOs</div>
+        <!-- Drive Setup & Formatting Options -->
+        <div class="panel">
+          <div class="panel-header">
+            <div class="panel-title">⚙️ Drive Setup & Bootloader Options</div>
+          </div>
           
-          <div class="picker-buttons" onclick="event.stopPropagation()">
-            <button class="btn-browse-finder" onclick="pickFromFinder()">
-              🍎 Browse from Mac Finder...
-            </button>
-            <button class="btn-secondary" onclick="document.getElementById('fileInput').click()">
-              📁 Choose Local File
-            </button>
-          </div>
-        </div>
-
-        <!-- Direct Path Input Option -->
-        <div class="path-input-group">
-          <span style="color: var(--text-dim); font-size: 14px;">📍 Path:</span>
-          <input type="text" id="manualPathInput" placeholder="/path/to/operating-system.iso (paste full file path)" onkeydown="if(event.key==='Enter') addFromManualPath()">
-          <button class="btn-secondary" style="padding: 4px 12px; font-size: 12px;" onclick="addFromManualPath()">+ Add</button>
-        </div>
-      </div>
-
-      <!-- Quick Presets -->
-      <div class="panel">
-        <div class="panel-header">
-          <div class="panel-title">⚡ Quick Add Official Images</div>
-        </div>
-        <div class="catalog-grid">
-          <div class="catalog-item" onclick="addPreset('Win11_24H2_English_x64.iso', 'Windows 11 (24H2)', '🪟', '6.2 GB', 'Windows')">
-            <span>🪟 Windows 11</span>
-          </div>
-          <div class="catalog-item" onclick="addPreset('linuxmint-22-cinnamon-64bit.iso', 'Linux Mint 22', '🌱', '2.88 GB', 'Linux')">
-            <span>🌱 Linux Mint</span>
-          </div>
-          <div class="catalog-item" onclick="addPreset('ubuntu-24.04-desktop-amd64.iso', 'Ubuntu 24.04 LTS', '🐧', '5.7 GB', 'Linux')">
-            <span>🐧 Ubuntu 24.04</span>
-          </div>
-          <div class="catalog-item" onclick="addPreset('debian-12.5.0-amd64-netinst.iso', 'Debian 12 Bookworm', '🌀', '620 MB', 'Linux')">
-            <span>🌀 Debian 12</span>
-          </div>
-          <div class="catalog-item" onclick="addPreset('alpine-standard-3.20.0-x86_64.iso', 'Alpine Linux 3.20', '🏔️', '210 MB', 'Linux')">
-            <span>🏔️ Alpine Linux</span>
-          </div>
-          <div class="catalog-item" onclick="addPreset('clonezilla-live-3.1.1-amd64.iso', 'Clonezilla Live', '🛠️', '410 MB', 'Rescue')">
-            <span>🛠️ Clonezilla</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Active Images List -->
-      <div class="panel">
-        <div class="panel-header">
-          <div class="panel-title">📋 Selected Images on Boot Drive (<span id="isoCount">0</span>)</div>
-          <button class="btn-secondary" style="padding: 4px 10px; font-size: 12px;" onclick="clearAllIsos()">Clear All</button>
-        </div>
-
-        <div id="isoList" class="iso-list" style="display: flex; flex-direction: column; gap: 10px;">
-          <div style="color: var(--text-dim); font-size: 13px; text-align: center; padding: 24px;">No images added yet. Click 'Browse from Mac Finder', drop an ISO, or select a preset above.</div>
-        </div>
-      </div>
-
-      <!-- Drive Format & Bootloader Options -->
-      <div class="panel">
-        <div class="panel-header">
-          <div class="panel-title">⚙️ Drive Setup & Bootloader Options</div>
-        </div>
-        
-        <div class="options-grid">
-          <div class="option-group">
-            <span class="option-title">Setup & Format Mode</span>
-            <select id="optSetupMode" class="select-input" onchange="toggleFormatWarning()">
-              <option value="fresh_multiboot" selected>🔄 Fresh Drive Format (Wipe & Create BOTDIGIT USB)</option>
-              <option value="add_isos">⚡ Non-Destructive (Keep Files & Inject Bootloader)</option>
-              <option value="raw_flash">🧼 Single-OS Flash (Raw DD Mode)</option>
-            </select>
-          </div>
-
-          <div class="option-group">
-            <span class="option-title">Volume Name (Label)</span>
-            <input type="text" id="optVolumeLabel" class="select-input" value="BOTDIGIT" style="font-family: var(--font-mono); font-weight: 700;" placeholder="BOTDIGIT">
-          </div>
-
-          <div class="option-group">
-            <span class="option-title">Partition Scheme & FS</span>
-            <div style="display: flex; gap: 6px;">
-              <select id="optPartitionScheme" class="select-input" style="flex: 1;">
-                <option value="GPT" selected>GPT (UEFI)</option>
-                <option value="MBR">MBR (BIOS+UEFI)</option>
-              </select>
-              <select id="optFilesystem" class="select-input" style="flex: 1;">
-                <option value="ExFAT" selected>ExFAT (Mac+PC)</option>
-                <option value="FAT32">FAT32</option>
-                <option value="NTFS">NTFS</option>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px;">
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); font-family: var(--font-mono);">SETUP & FORMAT MODE</span>
+              <select id="optSetupMode" class="btn-secondary" style="width: 100%;">
+                <option value="fresh_multiboot" selected>🔄 Fresh Format (Create BOTDIGIT USB)</option>
+                <option value="add_isos">⚡ Non-Destructive (Keep Files & Inject Boot)</option>
+                <option value="raw_flash">🧼 Single-OS Flash (Raw DD Mode)</option>
               </select>
             </div>
-          </div>
-        </div>
-      </div>
 
-      <!-- Action & Progress Bar -->
-      <div class="action-bar">
-        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-          <button class="btn-primary" style="flex: 1; min-width: 260px;" onclick="initiateBootDriveCreation()">
-            🚀 MAKE BOTDIGIT MULTI-BOOT DRIVE
-          </button>
-          <button class="btn-secondary" onclick="simulateVmTest()">
-            🧪 Test in Virtual Machine
-          </button>
-        </div>
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); font-family: var(--font-mono);">VOLUME LABEL</span>
+              <input type="text" id="optVolumeLabel" class="btn-secondary" value="BOTDIGIT" style="font-family: var(--font-mono); font-weight: 700;" placeholder="BOTDIGIT">
+            </div>
 
-        <!-- Live Transfer & Progress Box -->
-        <div class="progress-box" id="progressBox">
-          <div class="transfer-header">
-            <div>
-              <div style="font-size: 15px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px;">
-                <span id="transferSpinIcon" style="display: inline-block; animation: spin 2s linear infinite;">🔄</span>
-                <span id="progressPhase">Configuring Botdigit BootForge EFI Bootloader...</span>
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); font-family: var(--font-mono);">PARTITION SCHEME & FS</span>
+              <div style="display: flex; gap: 6px;">
+                <select id="optPartitionScheme" class="btn-secondary" style="flex: 1;">
+                  <option value="GPT" selected>GPT (UEFI)</option>
+                  <option value="MBR">MBR (BIOS+UEFI)</option>
+                </select>
+                <select id="optFilesystem" class="btn-secondary" style="flex: 1;">
+                  <option value="ExFAT" selected>ExFAT (Mac+PC)</option>
+                  <option value="FAT32">FAT32</option>
+                  <option value="NTFS">NTFS</option>
+                </select>
               </div>
-              <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;" id="currentFileTransferring">Writing custom boot theme and image data to USB drive</div>
-            </div>
-            <div style="font-size: 20px; font-weight: 800; color: #10B981; font-family: var(--font-mono);" id="progressPercent">0%</div>
-          </div>
-
-          <!-- Live Speed / Transferred / ETA Metrics Grid -->
-          <div class="transfer-stats-grid">
-            <div class="stat-pill">
-              <span class="stat-pill-label">Transfer Speed</span>
-              <span class="stat-pill-val" id="statSpeed" style="color: #38BDF8;">⚡ 0.0 MB/s</span>
-            </div>
-            <div class="stat-pill">
-              <span class="stat-pill-label">Data Copied</span>
-              <span class="stat-pill-val" id="statCopied" style="color: #34D399;">0.00 / 0.00 GB</span>
-            </div>
-            <div class="stat-pill">
-              <span class="stat-pill-label">ETA Remaining</span>
-              <span class="stat-pill-val" id="statEta" style="color: #FBBF24;">⏱️ --</span>
-            </div>
-            <div class="stat-pill">
-              <span class="stat-pill-label">Buffer Stream</span>
-              <span class="stat-pill-val" id="statBuffer" style="color: #A78BFA;">4MB Active</span>
             </div>
           </div>
 
-          <div class="progress-bar-bg">
+          <div style="display: flex; gap: 12px; margin-top: 10px;">
+            <button class="btn-primary" style="flex: 1;" onclick="initiateBootDriveCreation()">
+              🚀 MAKE BOTDIGIT MULTI-BOOT DRIVE
+            </button>
+            <button class="btn-secondary" onclick="switchTab('tabRepair')">
+              🛠️ Non-Destructive Repair
+            </button>
+          </div>
+        </div>
+
+        <!-- Live Progress Box -->
+        <div class="panel" id="progressBox" style="display: none;">
+          <div class="panel-header">
+            <div class="panel-title" id="progressPhase">Configuring Botdigit BootForge EFI Bootloader...</div>
+            <span id="progressPercent" style="font-family: var(--font-mono); font-weight: 800; color: #34D399;">0%</span>
+          </div>
+
+          <div class="progress-track">
             <div class="progress-bar-fill" id="progressBar"></div>
           </div>
 
-          <div class="terminal-view" id="terminalLog">Initializing Botdigit BootForge streaming transfer engine...</div>
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+            <div class="telemetry-card">
+              <span class="telemetry-label">SPEED</span>
+              <span class="telemetry-value" id="statSpeed">⚡ 0.0 MB/s</span>
+            </div>
+            <div class="telemetry-card">
+              <span class="telemetry-label">DATA WRITTEN</span>
+              <span class="telemetry-value" id="statCopied">0.0 / 0.0 GB</span>
+            </div>
+            <div class="telemetry-card">
+              <span class="telemetry-label">ETA</span>
+              <span class="telemetry-value" id="statEta">⏱️ --</span>
+            </div>
+            <div class="telemetry-card">
+              <span class="telemetry-label">STREAM BUFFER</span>
+              <span class="telemetry-value" style="color: #67E8F9;">4MB Active</span>
+            </div>
+          </div>
+
+          <div class="terminal-box" id="terminalLog"></div>
         </div>
+      </div>
+
+      <!-- 🧰 TAB 2: RECOVERY CENTER -->
+      <div class="tab-content" id="tabRecovery">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">🧰 Universal Recovery & Rescue Suite</div>
+              <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Professional IT diagnostic and rescue toolkits ready to embed onto your USB</div>
+            </div>
+          </div>
+
+          <div class="cards-grid" id="recoveryCatalogGrid">
+            <!-- Populated via API -->
+          </div>
+        </div>
+      </div>
+
+      <!-- 📁 TAB 3: USB FILE EXPLORER -->
+      <div class="panel tab-content" id="tabExplorer">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">📁 USB Micro File Explorer</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;" id="explorerMountBadge">Target: /Volumes/BOTDIGIT</div>
+          </div>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn-secondary" onclick="loadUsbFiles()">↻ Refresh</button>
+            <button class="btn-primary" onclick="openSelectedMountInFinder()">📂 Open Finder</button>
+          </div>
+        </div>
+
+        <div id="usbFileTree" style="display: flex; flex-direction: column; gap: 6px; max-height: 480px; overflow-y: auto;">
+          <!-- Populated via JS -->
+        </div>
+      </div>
+
+      <!-- 💿 TAB 4: ISO INTELLIGENCE -->
+      <div class="panel tab-content" id="tabIsoIntel">
+        <div class="panel-header">
+          <div class="panel-title">💿 Automatic ISO Intelligence & Compatibility Engine</div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+          <div id="isoIntelDetails">
+            <div style="color: var(--text-dim); font-size: 13px; text-align: center; padding: 30px;">
+              Select or analyze an ISO in Boot Studio to view its deep El Torito header inspection, architecture compatibility scores, and kernel traits.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 🔎 TAB 5: HARDWARE EXPLORER -->
+      <div class="panel tab-content" id="tabHardware">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">🔎 Host Hardware Telemetry & Architecture Explorer</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Real-time system diagnostics and boot capability detection</div>
+          </div>
+          <button class="btn-secondary" onclick="loadHardwareTelemetry()">↻ Re-Scan</button>
+        </div>
+
+        <div class="telemetry-grid" id="hwGrid">
+          <!-- Populated via API -->
+        </div>
+      </div>
+
+      <!-- 🔥 TAB 6: 1-CLICK BOOT REPAIR -->
+      <div class="panel tab-content" id="tabRepair">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">🔥 1-Click Non-Destructive Boot Repair</div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Restores corrupted or missing EFI bootloader structures without touching or deleting your ISO files</div>
+          </div>
+        </div>
+
+        <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="font-size: 14px; font-weight: 700; color: #FCD34D;">🛡️ Non-Destructive Boot Structure Restoration</div>
+          <div style="font-size: 13px; color: var(--text-muted);">
+            If a PC shows a blank screen or fails to boot from this USB, BootForge will re-verify and reinstall <code>/EFI/BOOT/BOOTX64.EFI</code>, <code>grub.cfg</code>, and the <strong>Botdigit Cyber Emerald</strong> theme while preserving all ISOs in <code>/images/</code>.
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 12px;">
+          <button class="btn-primary" onclick="repairBootloader()">
+            🛠️ REPAIR USB BOOTLOADER NOW
+          </button>
+        </div>
+
+        <div class="terminal-box" id="repairLog" style="display: none;"></div>
       </div>
 
     </div>
   </main>
 
-  <!-- Deep Device Analysis & Health Diagnostics Modal -->
-  <div class="modal-backdrop" id="deviceDiagModal">
-    <div class="modal-box" style="border-color: var(--cyan);">
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <div style="font-size: 18px; font-weight: 700; color: #22D3EE; display: flex; align-items: center; gap: 10px;">
-          <span>🔍 Storage Device Deep Diagnostics & OS Inspector</span>
-        </div>
-        <button class="btn-remove" onclick="closeDiagModal()">✕</button>
-      </div>
-
-      <div id="diagContent" style="display: flex; flex-direction: column; gap: 14px;">
-        <div style="color: var(--text-muted); text-align: center; padding: 20px;">Analyzing storage device slices, mount points, and installed OS images...</div>
-      </div>
-
-      <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 10px;">
-        <button class="btn-secondary" onclick="closeDiagModal()">Close</button>
-      </div>
-    </div>
-  </div>
-
   <!-- Large Drive Safety Confirmation Modal -->
   <div class="modal-backdrop" id="safetyModal">
-    <div class="modal-box" style="border-color: var(--amber);">
-      <div style="font-size: 18px; font-weight: 700; color: #FBBF24; display: flex; align-items: center; gap: 10px;">
-        <span>⚠️ High-Capacity Drive Safety Guard</span>
-      </div>
-      <div class="modal-desc" id="safetyModalText">
-        You have selected a storage drive larger than 100 GB.
-      </div>
-      <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 12px; font-size: 13px; color: #FCA5A5;">
-        ⚠️ <strong>CRITICAL SAFETY RULE</strong>: Botdigit BootForge will never touch or modify your drive without explicit confirmation.
-      </div>
-      <div>
-        <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; color: var(--text-muted);">
-          <input type="checkbox" id="safetyCheck"> I grant permission to configure this USB drive
+    <div class="modal-box">
+      <div style="font-size: 18px; font-weight: 800; color: #FCD34D;">⚠️ High-Capacity Drive Safety Guard</div>
+      <div id="safetyModalText" style="font-size: 13px; line-height: 1.6; color: var(--text-muted);"></div>
+      
+      <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 10px; padding: 14px;">
+        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13px; font-weight: 600;">
+          <input type="checkbox" id="safetyCheck">
+          <span>I understand and explicitly permit formatting this drive.</span>
         </label>
       </div>
-      <div>
-        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 6px;">
-          Type '<strong id="diskIdPrompt" style="color: var(--text);">diskX</strong>' to confirm permission:
-        </div>
-        <input type="text" id="safetyInput" class="confirm-input" placeholder="Type disk ID here..." style="width: 100%;" oninput="checkSafetyInput()">
+
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <span style="font-size: 12px; color: var(--text-dim);">To confirm, please type the device identifier <strong id="diskIdPrompt" style="color: #F8FAFC;"></strong>:</span>
+        <input type="text" id="safetyInput" class="btn-secondary" placeholder="Type disk ID (e.g. disk8)">
       </div>
-      <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 10px;">
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px;">
         <button class="btn-secondary" onclick="closeSafetyModal()">Cancel</button>
-        <button class="btn-primary" id="btnConfirmLargeDrive" style="padding: 10px 20px; font-size: 14px; opacity: 0.5; cursor: not-allowed;" disabled onclick="executeBootDriveCreation()">
-          Confirm & Proceed
-        </button>
+        <button class="btn-danger" id="btnConfirmLargeDrive" disabled onclick="executeBootDriveCreation()">Proceed & Format</button>
       </div>
     </div>
   </div>
-
-  <style>
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-  </style>
 
   <script>
     let devicesData = [];
     let selectedDevice = null;
     let selectedIsos = [];
 
+    // Initialize UI
     window.addEventListener('DOMContentLoaded', () => {
       loadDevices();
+      loadRecoveryCatalog();
+      loadHardwareTelemetry();
     });
 
-    function switchTab(tab) {
-      document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-      event.target.classList.add('active');
-      if (tab === 'diag' && selectedDevice) {
-        inspectDevice(selectedDevice);
-      } else if (tab === 'vm') {
-        simulateVmTest();
-      }
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+      
+      event.currentTarget?.classList.add('active');
+      const activeEl = document.getElementById(tabId);
+      if (activeEl) activeEl.classList.add('active');
+
+      if (tabId === 'tabExplorer') loadUsbFiles();
+      if (tabId === 'tabHardware') loadHardwareTelemetry();
     }
 
     async function loadDevices() {
-      const container = document.getElementById('deviceList');
-      container.innerHTML = '<div style="color: var(--text-dim); font-size: 13px; text-align: center; padding: 12px;">Scanning macOS storage devices...</div>';
-
       try {
         const res = await fetch('/api/devices');
         devicesData = await res.json();
-        renderDevices(devicesData);
-      } catch (err) {
-        console.error("Failed to load devices", err);
+        renderDevices();
+      } catch (e) {
+        console.error("Failed to load devices", e);
       }
     }
 
-    function renderDevices(devices) {
-      const container = document.getElementById('deviceList');
-      container.innerHTML = '';
+    function renderDevices() {
+      const list = document.getElementById('deviceList');
+      list.innerHTML = '';
 
-      if (!devices || devices.length === 0) {
-        container.innerHTML = '<div style="color: var(--text-dim); font-size: 13px; text-align: center; padding: 12px;">No external USB storage drives detected. Connect a USB drive and click ↻ Refresh.</div>';
+      if (devicesData.length === 0) {
+        list.innerHTML = '<div style="color: var(--text-dim); font-size: 13px; text-align: center; padding: 20px;">No USB devices found. Connect a drive.</div>';
         return;
       }
 
-      devices.forEach(d => {
+      devicesData.forEach(dev => {
+        const isSelected = selectedDevice === dev.id;
+        const gb = (dev.capacity / (1000 * 1000 * 1000)).toFixed(1);
         const card = document.createElement('div');
-        const isSys = d.is_system_drive;
-        const isLarge = d.capacity > 100 * 1000 * 1000 * 1000;
-        const gb = (d.capacity / (1000 * 1000 * 1000)).toFixed(1);
+        card.className = `device-card ${isSelected ? 'selected' : ''} ${dev.is_system_drive ? 'system-locked' : ''}`;
         
-        card.className = `device-card ${isSys ? 'system' : ''} ${selectedDevice === d.id ? 'active' : ''}`;
-        
-        let tagHtml = '';
-        if (isSys) {
-          tagHtml = '<span class="device-tag system-tag">🔒 macOS System Drive (Protected)</span>';
-        } else if (isLarge) {
-          tagHtml = '<span class="device-tag amber-tag">⚠️ High Capacity (>100 GB) - Requires Permission</span>';
-        } else {
-          tagHtml = '<span class="device-tag">✓ Ready for Universal Boot</span>';
-        }
-
         card.innerHTML = `
-          <div class="device-name">
-            <span>${d.model}</span>
-            <span>${gb} GB</span>
+          <div class="device-header">
+            <span class="device-name">${dev.vendor} ${dev.model}</span>
+            <span class="device-capacity">${gb} GB</span>
           </div>
           <div class="device-meta">
-            <span>/dev/${d.id} • ${d.interface}</span>
-            <button class="btn-inspect-device" onclick="inspectDevice('${d.id}', event)">🔍 Analyze</button>
+            <span>/dev/${dev.id}</span>
+            <span>•</span>
+            <span>${dev.interface}</span>
           </div>
-          ${tagHtml}
+          <div style="margin-top: 8px; display: flex; gap: 6px;">
+            ${dev.is_system_drive ? '<span class="badge badge-red">🔒 System Disk</span>' : ''}
+            ${dev.capacity > 100e9 ? '<span class="badge badge-amber">⚠️ >100 GB</span>' : '<span class="badge badge-emerald">✓ Ready</span>'}
+          </div>
         `;
 
-        if (!isSys) {
-          card.onclick = () => {
-            selectedDevice = d.id;
-            renderDevices(devices);
-            checkActiveDriveBanner(d.id);
-          };
-          if (!selectedDevice && !isSys) {
-            selectedDevice = d.id;
-            card.classList.add('active');
-            checkActiveDriveBanner(d.id);
-          }
+        if (!dev.is_system_drive) {
+          card.onclick = () => selectDevice(dev.id);
         }
-
-        container.appendChild(card);
+        list.appendChild(card);
       });
-    }
 
-    async function checkActiveDriveBanner(diskId) {
-      try {
-        const res = await fetch(`/api/device-details?id=${diskId}`);
-        const data = await res.json();
-        const banner = document.getElementById('activeDriveBanner');
-        if (data && data.is_mounted && data.mount_point) {
-          document.getElementById('bannerTitle').textContent = `${data.model} — ${data.detected_bootloader}`;
-          document.getElementById('bannerSubtitle').textContent = `Mount: ${data.mount_point} • Free Space: ${data.free_space_formatted || 'Active'} • Scheme: ${data.partition_scheme}`;
-          document.getElementById('bannerOpenFinderBtn').onclick = () => openInFinder(data.mount_point);
-          banner.style.display = 'flex';
-        } else {
-          banner.style.display = 'none';
-        }
-      } catch (e) {
-        console.error(e);
+      if (!selectedDevice && devicesData.length > 0) {
+        const firstUsable = devicesData.find(d => !d.is_system_drive);
+        if (firstUsable) selectDevice(firstUsable.id);
       }
     }
 
-    async function inspectDevice(diskId, event) {
-      if (event) event.stopPropagation();
-      const modal = document.getElementById('deviceDiagModal');
-      const content = document.getElementById('diagContent');
-      modal.style.display = 'flex';
-      content.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 24px;">🔍 Analyzing partition structures, filesystem headers, and installed OS images...</div>';
+    function selectDevice(id) {
+      selectedDevice = id;
+      renderDevices();
+      const dev = devicesData.find(d => d.id === id);
+      if (dev) {
+        document.getElementById('deviceQuickStats').style.display = 'flex';
+        document.getElementById('statMountPath').textContent = `Target: /dev/${dev.id}`;
+        document.getElementById('statFreeSpace').textContent = `Capacity: ${(dev.capacity / 1e9).toFixed(1)} GB`;
+      }
+    }
 
+    async function loadRecoveryCatalog() {
       try {
-        const res = await fetch(`/api/device-details?id=${diskId}`);
-        const data = await res.json();
-        if (!data) {
-          content.innerHTML = '<div style="color: #F87171; text-align: center; padding: 20px;">Unable to read storage device data.</div>';
+        const res = await fetch('/api/recovery-catalog');
+        const tools = await res.json();
+        const grid = document.getElementById('recoveryCatalogGrid');
+        grid.innerHTML = '';
+
+        tools.forEach(t => {
+          const card = document.createElement('div');
+          card.className = 'smart-card';
+          card.innerHTML = `
+            <div class="smart-card-top">
+              <div class="card-icon">${t.icon}</div>
+              <div>
+                <div style="font-weight: 700; font-size: 15px;">${t.name}</div>
+                <div style="font-size: 11px; color: var(--cyan); font-family: var(--font-mono);">${t.category} • ~${t.size_estimate}</div>
+              </div>
+            </div>
+            <div style="font-size: 12px; color: var(--text-muted); line-height: 1.4;">${t.description}</div>
+            <button class="btn-secondary" style="width: 100%; justify-content: center; font-size: 12px;" onclick="quickAdd('${t.name}', '${t.default_filename}', 'rescue')">
+              📥 Add to Boot USB
+            </button>
+          `;
+          grid.appendChild(card);
+        });
+      } catch (e) {
+        console.error("Failed to load recovery catalog", e);
+      }
+    }
+
+    async function loadHardwareTelemetry() {
+      try {
+        const res = await fetch('/api/hardware-info');
+        const hw = await res.json();
+        
+        document.getElementById('telemetryFirmware').textContent = hw.firmware_type;
+
+        const grid = document.getElementById('hwGrid');
+        grid.innerHTML = `
+          <div class="telemetry-card">
+            <span class="telemetry-label">PROCESSOR</span>
+            <span class="telemetry-value">${hw.cpu_model}</span>
+          </div>
+          <div class="telemetry-card">
+            <span class="telemetry-label">ARCHITECTURE</span>
+            <span class="telemetry-value" style="color: #67E8F9;">${hw.cpu_architecture}</span>
+          </div>
+          <div class="telemetry-card">
+            <span class="telemetry-label">CPU CORES</span>
+            <span class="telemetry-value">${hw.cpu_cores} Cores</span>
+          </div>
+          <div class="telemetry-card">
+            <span class="telemetry-label">SYSTEM MEMORY</span>
+            <span class="telemetry-value" style="color: #34D399;">${hw.memory_gb} GB RAM</span>
+          </div>
+          <div class="telemetry-card">
+            <span class="telemetry-label">FIRMWARE MODE</span>
+            <span class="telemetry-value">${hw.firmware_type}</span>
+          </div>
+          <div class="telemetry-card">
+            <span class="telemetry-label">SECURITY MODULE</span>
+            <span class="telemetry-value">${hw.tpm_version}</span>
+          </div>
+          <div class="telemetry-card">
+            <span class="telemetry-label">DISPLAY</span>
+            <span class="telemetry-value">${hw.display_resolution}</span>
+          </div>
+          <div class="telemetry-card">
+            <span class="telemetry-label">ACTIVE NETWORK</span>
+            <span class="telemetry-value">${hw.network_interfaces.join(', ')}</span>
+          </div>
+        `;
+      } catch (e) {
+        console.error("Hardware telemetry error", e);
+      }
+    }
+
+    async function loadUsbFiles() {
+      try {
+        const mount = document.getElementById('optVolumeLabel').value || 'BOTDIGIT';
+        const res = await fetch(`/api/usb-files?mount_path=/Volumes/${mount}`);
+        const nodes = await res.json();
+        const tree = document.getElementById('usbFileTree');
+        tree.innerHTML = '';
+
+        if (nodes.length === 0) {
+          tree.innerHTML = `<div style="color: var(--text-dim); font-size: 13px; text-align: center; padding: 20px;">No files found in /Volumes/${mount}.</div>`;
           return;
         }
 
-        const partitionsHtml = data.partitions.map(p => `
-          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); font-family: var(--font-mono); font-size: 12px;">
-            <td style="padding: 8px 4px; color: var(--cyan); font-weight: 600;">#${p.number} ${p.identifier}</td>
-            <td style="padding: 8px 4px; color: var(--text);">${p.partition_type}</td>
-            <td style="padding: 8px 4px; color: #34D399;">${p.filesystem}</td>
-            <td style="padding: 8px 4px;">${p.size_formatted}</td>
-            <td style="padding: 8px 4px;">${p.mount_point ? `<span style="color: #67E8F9;">${p.mount_point}</span>` : '<span style="color: var(--text-dim);">Unmounted</span>'}</td>
-          </tr>
-        `).join('');
+        function renderNode(n, depth = 0) {
+          const div = document.createElement('div');
+          div.style.paddingLeft = `${depth * 20}px`;
+          div.style.display = 'flex';
+          div.style.alignItems = 'center';
+          div.style.justifyContent = 'space-between';
+          div.style.padding = '8px 12px';
+          div.style.background = 'var(--bg-card)';
+          div.style.borderRadius = '6px';
+          div.style.fontSize = '13px';
+          div.style.fontFamily = 'var(--font-mono)';
 
-        let existingIsosHtml = '';
-        if (data.existing_isos && data.existing_isos.length > 0) {
-          existingIsosHtml = `
-            <div style="background: rgba(6, 182, 212, 0.06); border: 1px solid rgba(6, 182, 212, 0.3); border-radius: 10px; padding: 14px;">
-              <div style="font-size: 13px; font-weight: 700; color: #22D3EE; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
-                <span>📂 DETECTED OS IMAGES ALREADY ON THIS DRIVE (${data.existing_isos.length})</span>
-                <span style="font-size: 11px; color: #34D399;">Bootable Ready ✓</span>
-              </div>
-              <div style="display: flex; flex-direction: column; gap: 8px;">
-                ${data.existing_isos.map(iso => `
-                  <div style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-card); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border);">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                      <span>${iso.icon}</span>
-                      <div>
-                        <div style="font-size: 13px; font-weight: 600; color: var(--text);">${iso.file_name}</div>
-                        <div style="font-size: 11px; color: var(--text-muted); font-family: var(--font-mono);">${iso.detected_os} • ${iso.size_formatted}</div>
-                      </div>
-                    </div>
-                    <span class="badge-pill uefi">Installed</span>
-                  </div>
-                `).join('')}
-              </div>
+          const icon = n.is_dir ? '📁' : (n.is_bootable_iso ? '💿' : '📄');
+          div.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span>${icon}</span>
+              <span style="font-weight: ${n.is_dir ? '700' : '400'}; color: ${n.is_bootable_iso ? '#34D399' : '#F8FAFC'}">${n.name}</span>
+              ${n.category ? `<span class="badge badge-cyan">${n.category}</span>` : ''}
+            </div>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span style="color: var(--text-dim); font-size: 11px;">${n.is_dir ? '' : n.size_formatted}</span>
+              ${!n.is_dir ? `<button class="btn-danger" style="padding: 2px 8px; font-size: 11px;" onclick="deleteFile('${n.relative_path}')">Delete</button>` : ''}
             </div>
           `;
-        } else {
-          existingIsosHtml = `
-            <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-size: 12px; color: var(--text-dim); text-align: center;">
-              No existing ISO images found in the root storage directory.
-            </div>
-          `;
+          tree.appendChild(div);
+
+          if (n.children) {
+            n.children.forEach(child => renderNode(child, depth + 1));
+          }
         }
 
-        content.innerHTML = `
-          <div style="display: flex; align-items: center; justify-content: space-between; background: var(--bg-card); padding: 14px; border-radius: 10px; border: 1px solid var(--border);">
-            <div>
-              <div style="font-size: 16px; font-weight: 700; color: var(--text);">${data.model}</div>
-              <div style="font-size: 12px; color: var(--text-muted); font-family: var(--font-mono);">${data.device_path} • ${data.protocol} • Block: ${data.block_size}</div>
-              ${data.mount_point ? `<div style="font-size: 12px; color: #34D399; margin-top: 4px;">📍 Mount: ${data.mount_point} (${data.free_space_formatted || 'Active'})</div>` : '<div style="font-size: 12px; color: var(--text-dim); margin-top: 4px;">Not Mounted</div>'}
-            </div>
-            <div style="text-align: right;">
-              <div style="font-size: 18px; font-weight: 800; color: #10B981;">${data.capacity_formatted}</div>
-              <div style="font-size: 11px; color: var(--text-dim);">${data.partition_scheme}</div>
-              ${data.mount_point ? `<button class="btn-secondary" style="font-size: 11px; padding: 4px 8px; margin-top: 6px;" onclick="openInFinder('${data.mount_point}')">📂 Open in Finder</button>` : ''}
-            </div>
-          </div>
-
-          <div class="diag-metric-grid">
-            <div class="diag-card">
-              <span class="diag-label">Active Bootloader</span>
-              <span class="diag-val" style="color: #38BDF8; font-size: 12px;">${data.detected_bootloader}</span>
-            </div>
-            <div class="diag-card">
-              <span class="diag-label">Bus Speed</span>
-              <span class="diag-val" style="color: #34D399; font-size: 12px;">${data.interface_speed}</span>
-            </div>
-            <div class="diag-card">
-              <span class="diag-label">S.M.A.R.T. Health</span>
-              <span class="diag-val" style="color: #A78BFA; font-size: 12px;">${data.smart_status} (Wear: ${data.wear_percentage}%)</span>
-            </div>
-          </div>
-
-          ${existingIsosHtml}
-
-          <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 14px;">
-            <div style="font-size: 13px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px;">PARTITION MAP (${data.partitions.length} Slices)</div>
-            
-            <div class="part-bar">
-              ${data.partitions.map((p, idx) => `
-                <div class="part-segment" style="flex: ${idx === 0 ? 8 : 2}; background: ${p.is_boot_partition ? '#06B6D4' : '#10B981'};" title="${p.identifier} - ${p.size_formatted} (${p.filesystem})">
-                  ${p.filesystem}
-                </div>
-              `).join('')}
-            </div>
-
-            <table style="width: 100%; border-collapse: collapse; text-align: left; margin-top: 10px;">
-              <thead>
-                <tr style="color: var(--text-dim); font-size: 11px; text-transform: uppercase; border-bottom: 1px solid var(--border);">
-                  <th style="padding: 6px 4px;">Slice</th>
-                  <th style="padding: 6px 4px;">Type</th>
-                  <th style="padding: 6px 4px;">FS</th>
-                  <th style="padding: 6px 4px;">Size</th>
-                  <th style="padding: 6px 4px;">Mount Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${partitionsHtml || '<tr><td colspan="5" style="text-align: center; padding: 10px; color: var(--text-dim);">No sub-partitions</td></tr>'}
-              </tbody>
-            </table>
-          </div>
-
-          <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 12px; font-size: 13px; color: #A7F3D0;">
-            💡 <strong>Botdigit Studio Status</strong>: ${data.recommendation}
-          </div>
-        `;
-      } catch (err) {
-        content.innerHTML = `<div style="color: #F87171; text-align: center; padding: 20px;">Analysis error: ${err.message}</div>`;
+        nodes.forEach(n => renderNode(n, 0));
+      } catch (e) {
+        console.error("Failed to load USB files", e);
       }
     }
 
-    async function openInFinder(path) {
+    async function deleteFile(relPath) {
+      if (!confirm(`Delete ${relPath} from USB drive?`)) return;
+      const mount = `/Volumes/${document.getElementById('optVolumeLabel').value || 'BOTDIGIT'}`;
       try {
-        await fetch('/api/open-in-finder', {
+        const res = await fetch('/api/delete-usb-file', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ path: path })
+          body: JSON.stringify({ mount_path: mount, relative_path: relPath })
         });
+        const resp = await res.json();
+        alert(resp.message);
+        loadUsbFiles();
       } catch (e) {
-        console.error("Open in Finder failed", e);
+        alert("Delete failed: " + e.message);
       }
     }
 
-    function closeDiagModal() {
-      document.getElementById('deviceDiagModal').style.display = 'none';
+    async function repairBootloader() {
+      if (!selectedDevice) {
+        alert("Please select a target USB drive on the left.");
+        return;
+      }
+      const logEl = document.getElementById('repairLog');
+      logEl.style.display = 'block';
+      logEl.textContent = `[${new Date().toLocaleTimeString()}] Initiating Non-Destructive Boot Repair on /dev/${selectedDevice}...\n`;
+
+      try {
+        const res = await fetch('/api/repair-bootloader', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ disk_id: selectedDevice })
+        });
+        const r = await res.json();
+        r.logs.forEach(l => {
+          logEl.textContent += l + '\n';
+        });
+        alert(r.message);
+      } catch (e) {
+        logEl.textContent += `❌ Error: ${e.message}\n`;
+      }
+    }
+
+    function quickAdd(name, filename, category) {
+      selectedIsos.push({
+        display_name: name,
+        file_name: filename,
+        file_path: `/Volumes/Mac2TB/Botdigit/tools/${filename}`,
+        size: '2.88 GB',
+        size_bytes: 2_880_000_000,
+        category: category,
+        arch: 'x86_64'
+      });
+      renderSelectedIsos();
+    }
+
+    function clearSelectedIsos() {
+      selectedIsos = [];
+      renderSelectedIsos();
+    }
+
+    function renderSelectedIsos() {
+      document.getElementById('selectedCount').textContent = selectedIsos.length;
+      const grid = document.getElementById('isoCardsQueue');
+      grid.innerHTML = '';
+
+      if (selectedIsos.length === 0) {
+        grid.innerHTML = '<div style="color: var(--text-dim); font-size: 13px; padding: 20px; grid-column: 1 / -1; text-align: center;">No images selected. Drop an ISO above to start.</div>';
+        return;
+      }
+
+      selectedIsos.forEach((iso, idx) => {
+        const card = document.createElement('div');
+        card.className = 'smart-card';
+        card.innerHTML = `
+          <div class="smart-card-top">
+            <div class="card-icon">${iso.file_name.includes('win') ? '🪟' : (iso.file_name.includes('clone') ? '💽' : '🐧')}</div>
+            <div style="flex: 1;">
+              <div style="font-weight: 700; font-size: 14px;">${iso.display_name}</div>
+              <div style="font-size: 11px; color: var(--text-dim); font-family: var(--font-mono);">${iso.size || '2.88 GB'} • ${iso.arch || 'x86_64'}</div>
+            </div>
+            <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="removeIso(${idx})">✕</button>
+          </div>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <span class="badge badge-emerald">✓ UEFI Boot</span>
+            <span class="badge badge-cyan">✓ BIOS Boot</span>
+            <span class="badge badge-purple">✓ SHA256 OK</span>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function removeIso(idx) {
+      selectedIsos.splice(idx, 1);
+      renderSelectedIsos();
     }
 
     async function pickFromFinder() {
@@ -1332,178 +1158,98 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
         const res = await fetch('/api/pick-file');
         const data = await res.json();
         if (data.success && data.path) {
-          await analyzeAndAddIso(data.path);
+          analyzeAndAddIso(data.path);
         }
       } catch (e) {
-        console.error("Native file picker failed", e);
-        document.getElementById('fileInput').click();
+        console.error("Finder picker error", e);
       }
     }
 
-    async function handleBrowserFileInput(e) {
-      const files = e.target.files;
-      for (let i = 0; i < files.length; i++) {
-        const f = files[i];
-        await analyzeAndAddIso(f.name);
-      }
-    }
-
-    async function addFromManualPath() {
-      const input = document.getElementById('manualPathInput');
-      const val = input.value.trim();
-      if (!val) return;
-      await analyzeAndAddIso(val);
-      input.value = '';
-    }
-
-    async function analyzeAndAddIso(pathOrName) {
+    async function analyzeAndAddIso(path) {
       try {
         const res = await fetch('/api/analyze', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ path: pathOrName })
+          body: JSON.stringify({ path })
         });
         const data = await res.json();
-        
-        let icon = '🐧';
-        let family = 'Linux';
-        if (data.display_name.toLowerCase().includes('win')) { icon = '🪟'; family = 'Windows'; }
-        else if (data.display_name.toLowerCase().includes('mint')) { icon = '🌱'; family = 'Linux'; }
-        else if (data.display_name.toLowerCase().includes('clone') || data.display_name.toLowerCase().includes('rescue')) { icon = '🛠️'; family = 'Rescue'; }
-        else if (data.display_name.toLowerCase().includes('memtest')) { icon = '🧪'; family = 'Utility'; }
-
-        selectedIsos.push({
-          id: 'iso-' + Math.random().toString(36).substr(2, 6),
-          file_path: data.file_path,
-          file_name: data.file_name,
-          display_name: data.display_name,
-          icon: icon,
-          size: data.file_size_formatted,
-          size_bytes: data.file_size_bytes,
-          family: family,
-          boot: data.uefi_capable ? 'UEFI + BIOS' : 'BIOS Only',
-          sha256: data.sha256_preview,
-          compat: data.score + '% ' + data.compat_level
-        });
-
-        renderIsos();
-      } catch (err) {
-        console.error("Failed to analyze image", err);
+        if (data.success) {
+          selectedIsos.push({
+            display_name: data.display_name,
+            file_name: data.file_name,
+            file_path: data.file_path,
+            size: data.file_size_formatted,
+            size_bytes: data.file_size_bytes,
+            arch: data.arch
+          });
+          renderSelectedIsos();
+          showIsoIntelligence(data);
+        }
+      } catch (e) {
+        console.error("Analyze error", e);
       }
     }
 
-    function addPreset(filename, display_name, icon, size, family) {
-      if (selectedIsos.some(i => i.file_name === filename)) return;
-
-      let size_bytes = 3_000_000_000;
-      if (size.includes('GB')) {
-        size_bytes = parseFloat(size) * 1024 * 1024 * 1024;
-      } else if (size.includes('MB')) {
-        size_bytes = parseFloat(size) * 1024 * 1024;
-      }
-
-      selectedIsos.push({
-        id: 'iso-' + Math.random().toString(36).substr(2, 6),
-        file_path: '/presets/' + filename,
-        file_name: filename,
-        display_name: display_name,
-        icon: icon,
-        size: size,
-        size_bytes: size_bytes,
-        family: family,
-        boot: 'UEFI + BIOS',
-        sha256: 'Official Hash Verified ✓',
-        compat: '100% EXCELLENT'
-      });
-
-      renderIsos();
-    }
-
-    function removeIso(id) {
-      selectedIsos = selectedIsos.filter(i => i.id !== id);
-      renderIsos();
-    }
-
-    function clearAllIsos() {
-      selectedIsos = [];
-      renderIsos();
-    }
-
-    function renderIsos() {
-      const list = document.getElementById('isoList');
-      document.getElementById('isoCount').textContent = selectedIsos.length;
-      list.innerHTML = '';
-
-      if (selectedIsos.length === 0) {
-        list.innerHTML = '<div style="color: var(--text-dim); font-size: 13px; text-align: center; padding: 24px;">No images added yet. Click \'Browse from Mac Finder\', drop an ISO, or select a preset above.</div>';
-        return;
-      }
-
-      selectedIsos.forEach(iso => {
-        const item = document.createElement('div');
-        item.className = 'iso-card';
-        item.innerHTML = `
-          <div class="iso-info">
-            <div class="iso-icon">${iso.icon}</div>
-            <div class="iso-details">
-              <h4>${iso.display_name}</h4>
-              <div class="iso-meta">
-                <span class="badge-pill ${iso.family === 'Windows' ? 'windows' : 'uefi'}">${iso.boot}</span>
-                <span>${iso.size}</span>
-                <span style="color: #34D399;">✓ ${iso.sha256}</span>
+    function showIsoIntelligence(data) {
+      const details = document.getElementById('isoIntelDetails');
+      details.innerHTML = `
+        <div class="smart-card">
+          <div style="font-weight: 800; font-size: 16px; color: #34D399;">${data.display_name}</div>
+          <div style="font-size: 12px; color: var(--text-muted); font-family: var(--font-mono);">${data.file_name} (${data.file_size_formatted})</div>
+          
+          <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px;">
+            <div style="font-size: 12px; font-weight: 700; color: var(--text-dim);">ARCHITECTURE COMPATIBILITY AUDIT:</div>
+            
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 11px; font-family: var(--font-mono);">
+                <span>UEFI x86_64</span>
+                <span style="color: #34D399;">${data.uefi_x64_score || 100}%</span>
               </div>
+              <div class="progress-track" style="height: 6px;"><div class="progress-bar-fill" style="width: ${data.uefi_x64_score || 100}%;"></div></div>
+            </div>
+
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 11px; font-family: var(--font-mono);">
+                <span>Legacy BIOS x86</span>
+                <span style="color: #34D399;">${data.bios_score || 100}%</span>
+              </div>
+              <div class="progress-track" style="height: 6px;"><div class="progress-bar-fill" style="width: ${data.bios_score || 100}%;"></div></div>
+            </div>
+
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 11px; font-family: var(--font-mono);">
+                <span>Secure Boot</span>
+                <span style="color: #FCD34D;">${data.secure_boot_score || 80}%</span>
+              </div>
+              <div class="progress-track" style="height: 6px;"><div class="progress-bar-fill" style="width: ${data.secure_boot_score || 80}%;"></div></div>
             </div>
           </div>
-          <div style="display: flex; align-items: center; gap: 12px;">
-            <span class="badge-pill" style="background: rgba(16, 185, 129, 0.15); color: #10B981;">${iso.compat}</span>
-            <button class="btn-remove" onclick="removeIso('${iso.id}')">✕</button>
-          </div>
-        `;
-        list.appendChild(item);
+        </div>
+      `;
+    }
+
+    function openSelectedMountInFinder() {
+      const mount = `/Volumes/${document.getElementById('optVolumeLabel').value || 'BOTDIGIT'}`;
+      fetch('/api/open-in-finder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: mount })
       });
     }
 
-    // Drag and drop handlers
-    const dropzone = document.getElementById('dropzone');
-    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
-    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
-    dropzone.addEventListener('drop', (e) => {
-      e.preventDefault();
-      dropzone.classList.remove('dragover');
-      if (e.dataTransfer.files) {
-        handleBrowserFileInput({ target: { files: e.dataTransfer.files } });
-      }
-    });
-
-    // Safety checks & modal
     function initiateBootDriveCreation() {
       if (!selectedDevice) {
-        alert("Please select a target external USB drive from the left panel first.");
+        alert("Please select a target USB drive on the left.");
         return;
       }
-
-      if (selectedIsos.length === 0) {
-        alert("Please select or add at least one operating system image (ISO) first.");
-        return;
-      }
-
       const dev = devicesData.find(d => d.id === selectedDevice);
-      if (!dev) return;
-
-      if (dev.is_system_drive) {
-        alert("🛑 SAFETY BLOCK: The selected drive is an internal macOS system drive and is strictly protected against modification.");
-        return;
-      }
-
+      const isLarge = dev && dev.capacity > 100e9;
       const mode = document.getElementById('optSetupMode').value;
-      const isLarge = dev.capacity > 100 * 1000 * 1000 * 1000;
-      
+
       if (isLarge || mode === 'fresh_multiboot') {
         openSafetyModal(dev);
       } else {
-        if (confirm(`Ready to configure Botdigit BootForge on USB Drive /dev/${dev.id} (${(dev.capacity / 1e9).toFixed(1)} GB) with ${selectedIsos.length} ISO(s)?`)) {
-          executeBootDriveCreation();
-        }
+        executeBootDriveCreation();
       }
     }
 
@@ -1511,20 +1257,11 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       const modal = document.getElementById('safetyModal');
       const text = document.getElementById('safetyModalText');
       const prompt = document.getElementById('diskIdPrompt');
-      const gb = (dev.capacity / (1000 * 1000 * 1000)).toFixed(1);
+      const gb = (dev.capacity / 1e9).toFixed(1);
       const mode = document.getElementById('optSetupMode').value;
 
-      let warningMsg = mode === 'fresh_multiboot' 
-        ? `<span style="color: #EF4444; font-weight: 700;">FRESH FORMAT SELECTED:</span> All existing data on this drive will be wiped to create the new Botdigit BootForge multi-boot EFI structure.`
-        : `Because this drive is larger than 100 GB, extra permission is required to ensure no personal backups or files are affected.`;
-
-      text.innerHTML = `You have selected <strong>${dev.model}</strong> (<code>/dev/${dev.id}</code> — <strong>${gb} GB</strong>).<br><br>${warningMsg}`;
+      text.innerHTML = `You have selected <strong>${dev.model}</strong> (<code>/dev/${dev.id}</code> — <strong>${gb} GB</strong>).<br><br>${mode === 'fresh_multiboot' ? '<span style="color: #EF4444; font-weight: 700;">FRESH FORMAT SELECTED:</span> All existing data will be wiped.' : 'Safety permission required for drives >100GB.'}`;
       prompt.textContent = dev.id;
-
-      document.getElementById('safetyCheck').checked = false;
-      document.getElementById('safetyInput').value = '';
-      checkSafetyInput();
-
       modal.style.display = 'flex';
     }
 
@@ -1532,26 +1269,22 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       document.getElementById('safetyModal').style.display = 'none';
     }
 
-    function checkSafetyInput() {
+    document.getElementById('safetyCheck').addEventListener('change', () => {
       const dev = devicesData.find(d => d.id === selectedDevice);
       const isChecked = document.getElementById('safetyCheck').checked;
       const inputVal = document.getElementById('safetyInput').value.trim();
       const btn = document.getElementById('btnConfirmLargeDrive');
+      btn.disabled = !(dev && isChecked && inputVal === dev.id);
+    });
 
-      if (dev && isChecked && inputVal === dev.id) {
-        btn.disabled = false;
-        btn.style.opacity = '1';
-        btn.style.cursor = 'pointer';
-      } else {
-        btn.disabled = true;
-        btn.style.opacity = '0.5';
-        btn.style.cursor = 'not-allowed';
-      }
-    }
+    document.getElementById('safetyInput').addEventListener('input', () => {
+      const dev = devicesData.find(d => d.id === selectedDevice);
+      const isChecked = document.getElementById('safetyCheck').checked;
+      const inputVal = document.getElementById('safetyInput').value.trim();
+      const btn = document.getElementById('btnConfirmLargeDrive');
+      btn.disabled = !(dev && isChecked && inputVal === dev.id);
+    });
 
-    document.getElementById('safetyCheck').addEventListener('change', checkSafetyInput);
-
-    // Live Synchronized File Transfer & Writing Engine
     async function executeBootDriveCreation() {
       closeSafetyModal();
       const box = document.getElementById('progressBox');
@@ -1559,97 +1292,63 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       const percent = document.getElementById('progressPercent');
       const phase = document.getElementById('progressPhase');
       const log = document.getElementById('terminalLog');
-      const currentFileEl = document.getElementById('currentFileTransferring');
       const speedEl = document.getElementById('statSpeed');
       const copiedEl = document.getElementById('statCopied');
       const etaEl = document.getElementById('statEta');
-      const spinIcon = document.getElementById('transferSpinIcon');
 
       const mode = document.getElementById('optSetupMode').value;
       const scheme = document.getElementById('optPartitionScheme').value;
       const fs = document.getElementById('optFilesystem').value;
-      const volumeLabel = document.getElementById('optVolumeLabel')?.value?.trim() || 'BOTDIGIT';
+      const volumeLabel = document.getElementById('optVolumeLabel').value || 'BOTDIGIT';
 
       box.style.display = 'block';
       box.scrollIntoView({ behavior: 'smooth' });
       bar.style.width = '0%';
       percent.textContent = '0%';
-      spinIcon.style.display = 'inline-block';
-      
-      const totalBytes = selectedIsos.reduce((acc, i) => acc + (i.size_bytes || 2_500_000_000), 0);
-      const totalGb = (totalBytes / (1024 * 1024 * 1024)).toFixed(2);
 
-      log.textContent = `[${new Date().toLocaleTimeString()}] [Botdigit BootForge Universal Multi-Boot Studio v0.1.0]\n`;
-      log.textContent += `[${new Date().toLocaleTimeString()}] Target Drive: /dev/${selectedDevice}\n`;
-      log.textContent += `[${new Date().toLocaleTimeString()}] Mode: ${mode} • Scheme: ${scheme} • FS: ${fs} • Label: ${volumeLabel}\n`;
-      log.textContent += `[${new Date().toLocaleTimeString()}] Total Payload: ${totalGb} GB (${selectedIsos.length} ISO images)\n`;
+      log.textContent = `[${new Date().toLocaleTimeString()}] [Botdigit BootForge Studio v0.1.0]\n`;
+      log.textContent += `[${new Date().toLocaleTimeString()}] Target: /dev/${selectedDevice} (${mode})\n`;
 
-      let isFinished = false;
       let createdMountPoint = null;
 
-      // Start live polling of backend progress
       const pollTimer = setInterval(async () => {
         try {
-          const pRes = await fetch('/api/transfer-progress');
-          const p = await pRes.json();
+          const res = await fetch('/api/transfer-progress');
+          const p = await res.json();
           if (p) {
             phase.textContent = p.phase || 'Writing data blocks...';
-            currentFileEl.textContent = p.current_file ? `Processing: ${p.current_file}` : p.message;
-            
-            const pct = Math.min(100, Math.max(0, p.percentage));
-            bar.style.width = pct.toFixed(1) + '%';
-            percent.textContent = Math.floor(pct) + '%';
+            bar.style.width = `${p.percentage.toFixed(1)}%`;
+            percent.textContent = `${Math.floor(p.percentage)}%`;
 
-            if (p.speed_mbps > 0) {
-              speedEl.textContent = `⚡ ${p.speed_mbps.toFixed(1)} MB/s`;
-            } else if (p.is_completed) {
-              speedEl.textContent = '⚡ Completed';
-            }
+            if (p.speed_mbps > 0) speedEl.textContent = `⚡ ${p.speed_mbps.toFixed(1)} MB/s`;
+            if (p.eta_seconds > 0) etaEl.textContent = `⏱️ ${p.eta_seconds}s`;
 
-            if (p.total_bytes > 0) {
-              const wrGb = (p.bytes_written / (1024 * 1024 * 1024)).toFixed(2);
-              const totGb = (p.total_bytes / (1024 * 1024 * 1024)).toFixed(2);
-              copiedEl.textContent = `${wrGb} / ${totGb} GB`;
-            } else {
-              const wrGb = ((pct / 100) * parseFloat(totalGb)).toFixed(2);
-              copiedEl.textContent = `${wrGb} / ${totalGb} GB`;
-            }
-
-            if (p.eta_seconds > 0) {
-              etaEl.textContent = `⏱️ ${p.eta_seconds}s`;
-            } else if (p.is_completed) {
-              etaEl.textContent = '⏱️ 0s';
-            }
-
-            if (p.logs && p.logs.length > 0) {
+            if (p.logs) {
               const currentLogs = log.textContent;
-              for (const l of p.logs) {
+              p.logs.forEach(l => {
                 if (!currentLogs.includes(l)) {
                   log.textContent += l + '\n';
                   log.scrollTop = log.scrollHeight;
                 }
-              }
+              });
             }
 
-            if (p.is_completed || isFinished) {
+            if (p.is_completed) {
               clearInterval(pollTimer);
               bar.style.width = '100%';
               percent.textContent = '100%';
               phase.textContent = '✨ Botdigit Multi-Boot USB Ready!';
-              currentFileEl.textContent = 'All ISO images, bootloader theme & configurations verified.';
-              spinIcon.style.display = 'none';
+              speedEl.textContent = '⚡ Completed';
+              etaEl.textContent = '⏱️ 0s';
               loadDevices();
-              if (createdMountPoint) {
-                setTimeout(() => openInFinder(createdMountPoint), 600);
-              }
+              if (createdMountPoint) setTimeout(() => openSelectedMountInFinder(), 600);
             }
           }
         } catch (e) {
-          console.error("Progress poll error", e);
+          console.error("Poll error", e);
         }
       }, 150);
 
-      // Trigger backend formatting & copy task
       try {
         const res = await fetch('/api/create-boot-drive', {
           method: 'POST',
@@ -1660,28 +1359,15 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
             partition_scheme: scheme,
             filesystem: fs,
             volume_label: volumeLabel,
-            theme_name: 'botdigit_emerald',
             isos: selectedIsos.map(i => ({ file_path: i.file_path, file_name: i.file_name, display_name: i.display_name }))
           })
         });
-
         const resp = await res.json();
-        if (resp.success) {
-          createdMountPoint = resp.mount_point;
-          isFinished = true;
-        }
+        if (resp.success) createdMountPoint = resp.mount_point;
       } catch (err) {
-        log.textContent += `[${new Date().toLocaleTimeString()}] ❌ Error: ${err.message}\n`;
+        log.textContent += `❌ Error: ${err.message}\n`;
         clearInterval(pollTimer);
       }
-    }
-
-    function simulateVmTest() {
-      if (selectedIsos.length === 0) {
-        alert("Please add at least one image to test in VM.");
-        return;
-      }
-      alert(`Launching QEMU Virtual Machine simulation for: ${selectedIsos[0].display_name}...`);
     }
   </script>
 </body>

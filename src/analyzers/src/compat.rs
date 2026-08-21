@@ -82,11 +82,24 @@ pub fn evaluate_compatibility(
         }
     };
 
+    let uefi_x64 = if boot_info.uefi_capable { 100 } else { 0 };
+    let bios = if boot_info.bios_capable { 100 } else { 0 };
+    let secure_boot = match boot_info.secure_boot {
+        SecureBootStatus::Supported => 95,
+        SecureBootStatus::Partial => 60,
+        _ => 20,
+    };
+    let arm64 = if boot_info.efi_architectures.iter().any(|a| a.contains("aa64") || a.contains("arm64")) { 90 } else { 0 };
+
     (
         CompatibilityScore {
             score: clamped,
             level,
             details,
+            uefi_x64_score: uefi_x64,
+            bios_score: bios,
+            secure_boot_score: secure_boot,
+            arm64_score: arm64,
         },
         strategy,
     )

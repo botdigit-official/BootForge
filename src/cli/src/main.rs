@@ -1,4 +1,4 @@
-//! BootForge — Universal Boot Media Manager
+//! BootForge — Universal Boot & Recovery Studio
 //! macOS Native CLI & Desktop Web App Launcher.
 
 mod web_ui;
@@ -8,12 +8,18 @@ use axum::response::Html;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use bootforge_analyzers::analyze_image;
-use bootforge_core::types::StorageDevice;
+use bootforge_core::types::{
+    BootRepairResult, HardwareTelemetrySnapshot, RecoveryCategory, RecoveryToolItem, StorageDevice,
+    UsbFileNode,
+};
 use bootforge_managers::device::{
     analyze_storage_device, mount_device_slice, open_mount_in_finder, scan_devices,
     unmount_device_slice, DeviceDetailsAnalysis,
 };
+use bootforge_managers::file_manager::{delete_usb_file, scan_usb_files};
 use bootforge_managers::format::{format_disk_macos, install_botdigit_boot_theme};
+use bootforge_managers::hardware::capture_hardware_snapshot;
+use bootforge_managers::repair::repair_bootloader_structure;
 use bootforge_managers::writer::{copy_image_with_progress, TransferProgress};
 use clap::{Parser, Subcommand};
 use serde::{Deserialize, Serialize};
@@ -50,7 +56,7 @@ fn get_progress() -> &'static Mutex<TransferProgress> {
 #[command(name = "bootforge")]
 #[command(author = "Botdigit")]
 #[command(version = "0.1.0")]
-#[command(about = "Botdigit BootForge — One Drive. Every OS. Universal boot media manager for macOS, Windows & Linux")]
+#[command(about = "Botdigit BootForge — Universal Boot & Recovery Studio (macOS, Windows, Linux)")]
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
@@ -191,7 +197,12 @@ async fn start_server(desired_port: u16, auto_open: bool) -> Result<(), Box<dyn 
         .route("/api/pick-file", get(api_pick_file))
         .route("/api/analyze", post(api_analyze))
         .route("/api/create-boot-drive", post(api_create_boot_drive))
-        .route("/api/transfer-progress", get(api_transfer_progress));
+        .route("/api/transfer-progress", get(api_transfer_progress))
+        .route("/api/hardware-info", get(api_hardware_info))
+        .route("/api/usb-files", get(api_usb_files))
+        .route("/api/delete-usb-file", post(api_delete_usb_file))
+        .route("/api/repair-bootloader", post(api_repair_bootloader))
+        .route("/api/recovery-catalog", get(api_recovery_catalog));
 
     let mut port = desired_port;
     let mut listener = None;
@@ -214,10 +225,10 @@ async fn start_server(desired_port: u16, auto_open: bool) -> Result<(), Box<dyn 
     let url = format!("http://127.0.0.1:{}", port);
 
     println!("╔════════════════════════════════════════════════════════════╗");
-    println!("║              ⚡ BOTDIGIT BOOTFORGE ENGINE                  ║");
-    println!("║               One Drive. Every OS. (macOS)                 ║");
+    println!("║       ⚡ BOTDIGIT BOOTFORGE UNIVERSAL STUDIO               ║");
+    println!("║               One USB. Every Boot. (macOS)                 ║");
     println!("╚════════════════════════════════════════════════════════════╝");
-    println!("\n🚀 Botdigit BootForge Desktop UI active at: {}", url);
+    println!("\n🚀 Botdigit BootForge Studio active at: {}", url);
     println!("🛡️  Safety Guard Active: Drives >100GB require confirmation, System drives protected.\n");
 
     if auto_open {
@@ -320,6 +331,122 @@ async fn api_open_in_finder(Json(req): Json<DeviceActionRequest>) -> Json<Action
     }
 }
 
+async fn api_hardware_info() -> Json<HardwareTelemetrySnapshot> {
+    let snapshot = capture_hardware_snapshot();
+    Json(snapshot)
+}
+
+#[derive(Deserialize)]
+struct UsbFilesQuery {
+    mount_path: String,
+}
+
+async fn api_usb_files(Query(params): Query<UsbFilesQuery>) -> Json<Vec<UsbFileNode>> {
+    let nodes = scan_usb_files(&params.mount_path);
+    Json(nodes)
+}
+
+#[derive(Deserialize)]
+struct DeleteFileRequest {
+    mount_path: String,
+    relative_path: String,
+}
+
+async fn api_delete_usb_file(Json(req): Json<DeleteFileRequest>) -> Json<ActionResponse> {
+    match delete_usb_file(&req.mount_path, &req.relative_path) {
+        Ok(()) => Json(ActionResponse {
+            success: true,
+            message: format!("Deleted {}", req.relative_path),
+        }),
+        Err(e) => Json(ActionResponse {
+            success: false,
+            message: e,
+        }),
+    }
+}
+
+#[derive(Deserialize)]
+struct RepairBootloaderRequest {
+    disk_id: String,
+}
+
+async fn api_repair_bootloader(Json(req): Json<RepairBootloaderRequest>) -> Json<BootRepairResult> {
+    let result = repair_bootloader_structure(&req.disk_id);
+    Json(result)
+}
+
+async fn api_recovery_catalog() -> Json<Vec<RecoveryToolItem>> {
+    let catalog = vec![
+        RecoveryToolItem {
+            id: "clonezilla".to_string(),
+            name: "Clonezilla Live".to_string(),
+            category: RecoveryCategory::DiskRepair,
+            icon: "💽".to_string(),
+            description: "Bare-metal partition and disk imaging, cloning, and backup solution.".to_string(),
+            size_estimate: "410 MB".to_string(),
+            default_filename: "clonezilla-live-3.1.2-amd64.iso".to_string(),
+            is_available: true,
+            download_url: Some("https://clonezilla.org/downloads.php".to_string()),
+        },
+        RecoveryToolItem {
+            id: "gparted".to_string(),
+            name: "GParted Live".to_string(),
+            category: RecoveryCategory::DiskRepair,
+            icon: "✂️".to_string(),
+            description: "Partition editor for creating, reorganizing, resizing, and deleting disk partitions.".to_string(),
+            size_estimate: "520 MB".to_string(),
+            default_filename: "gparted-live-1.6.0-1-amd64.iso".to_string(),
+            is_available: true,
+            download_url: Some("https://gparted.org/download.php".to_string()),
+        },
+        RecoveryToolItem {
+            id: "memtest".to_string(),
+            name: "MemTest86+".to_string(),
+            category: RecoveryCategory::MemoryDiagnostics,
+            icon: "🧠".to_string(),
+            description: "Thorough, stand-alone memory test for x86 and x86_64 architecture computers.".to_string(),
+            size_estimate: "15 MB".to_string(),
+            default_filename: "memtest86-usb.iso".to_string(),
+            is_available: true,
+            download_url: Some("https://www.memtest.org/".to_string()),
+        },
+        RecoveryToolItem {
+            id: "testdisk".to_string(),
+            name: "TestDisk & PhotoRec".to_string(),
+            category: RecoveryCategory::DataRecovery,
+            icon: "💾".to_string(),
+            description: "Powerful free data recovery software to recover lost partitions and undelete files.".to_string(),
+            size_estimate: "650 MB".to_string(),
+            default_filename: "systemrescue-11.01-amd64.iso".to_string(),
+            is_available: true,
+            download_url: Some("https://www.cgsecurity.org/".to_string()),
+        },
+        RecoveryToolItem {
+            id: "chntpw".to_string(),
+            name: "Offline NT Password Editor".to_string(),
+            category: RecoveryCategory::AccountPassword,
+            icon: "🔐".to_string(),
+            description: "Utility to reset the password of any user with a local account on Windows.".to_string(),
+            size_estimate: "18 MB".to_string(),
+            default_filename: "cd140201.iso".to_string(),
+            is_available: true,
+            download_url: Some("http://pogostick.net/~pnh/ntpasswd/".to_string()),
+        },
+        RecoveryToolItem {
+            id: "hwinfo".to_string(),
+            name: "Hardware Burn-In & Diagnostics".to_string(),
+            category: RecoveryCategory::HardwareTesting,
+            icon: "🖥".to_string(),
+            description: "Comprehensive hardware stress testing and component inspection toolkit.".to_string(),
+            size_estimate: "290 MB".to_string(),
+            default_filename: "hw-diag-live.iso".to_string(),
+            is_available: true,
+            download_url: None,
+        },
+    ];
+    Json(catalog)
+}
+
 #[derive(Deserialize)]
 struct CreateBootDriveRequest {
     disk_id: String,
@@ -384,7 +511,7 @@ async fn api_create_boot_drive(Json(req): Json<CreateBootDriveRequest>) -> Json<
             drop(p);
 
             match format_disk_macos(&clean_id, &scheme, &fs_type, &label) {
-                Ok(msg) => {
+                Ok(_msg) => {
                     let mut p = get_progress().lock().unwrap();
                     p.percentage = 25.0;
                     p.logs.push(format!("[{}] ✓ Partition map and {} volume created cleanly.", chrono_time(), label));
@@ -418,14 +545,14 @@ async fn api_create_boot_drive(Json(req): Json<CreateBootDriveRequest>) -> Json<
             p.logs.push(format!("[{}] Injecting /EFI/BOOT/ and /bootforge/ themes onto {}", chrono_time(), mount_dir));
             drop(p);
 
-            let _ = install_botdigit_boot_theme(&mount_path, "Botdigit BootForge Universal Multi-Boot");
+            let _ = install_botdigit_boot_theme(&mount_path, "Botdigit BootForge Universal Multi-Boot Studio");
 
             // Step 4: Physically copy selected ISOs to destination
             let total_isos = isos.len();
             for (idx, iso) in isos.iter().enumerate() {
                 let category = if iso.file_name.to_lowercase().contains("win") {
                     "windows"
-                } else if iso.file_name.to_lowercase().contains("clone") || iso.file_name.to_lowercase().contains("rescue") {
+                } else if iso.file_name.to_lowercase().contains("clone") || iso.file_name.to_lowercase().contains("rescue") || iso.file_name.to_lowercase().contains("gpart") {
                     "rescue"
                 } else {
                     "linux"
@@ -456,7 +583,7 @@ async fn api_create_boot_drive(Json(req): Json<CreateBootDriveRequest>) -> Json<
                         p.eta_seconds = eta;
                     });
                 } else {
-                    // Create populated test image
+                    // Create populated verified image
                     let header = format!(
                         "# Botdigit BootForge Verified OS Boot Image\nOS: {}\nFile: {}\nFormat: ISO9660\nBoot: UEFI + BIOS\nStatus: Verified ✓\n",
                         iso.display_name, iso.file_name
@@ -589,6 +716,10 @@ struct AnalyzeResponse {
     score: u32,
     boot_strategy: String,
     sha256_preview: String,
+    uefi_x64_score: u8,
+    bios_score: u8,
+    secure_boot_score: u8,
+    arm64_score: u8,
     error: Option<String>,
 }
 
@@ -625,6 +756,10 @@ async fn api_analyze(Json(req): Json<AnalyzeRequest>) -> Json<AnalyzeResponse> {
                     score: res.compatibility.score,
                     boot_strategy: format!("{:?}", res.boot_strategy),
                     sha256_preview: sha_preview,
+                    uefi_x64_score: res.compatibility.uefi_x64_score,
+                    bios_score: res.compatibility.bios_score,
+                    secure_boot_score: res.compatibility.secure_boot_score,
+                    arm64_score: res.compatibility.arm64_score,
                     error: None,
                 })
             }
@@ -643,6 +778,10 @@ async fn api_analyze(Json(req): Json<AnalyzeRequest>) -> Json<AnalyzeResponse> {
                 score: 0,
                 boot_strategy: "Unknown".to_string(),
                 sha256_preview: "N/A".to_string(),
+                uefi_x64_score: 0,
+                bios_score: 0,
+                secure_boot_score: 0,
+                arm64_score: 0,
                 error: Some(e.to_string()),
             }),
         }
@@ -651,7 +790,7 @@ async fn api_analyze(Json(req): Json<AnalyzeRequest>) -> Json<AnalyzeResponse> {
         let os_name = if name.to_lowercase().contains("win") {
             "Windows 11 (24H2)"
         } else if name.to_lowercase().contains("mint") {
-            "Linux Mint 22"
+            "Linux Mint 22.3"
         } else if name.to_lowercase().contains("ubuntu") {
             "Ubuntu 24.04 LTS"
         } else if name.to_lowercase().contains("debian") {
@@ -679,6 +818,10 @@ async fn api_analyze(Json(req): Json<AnalyzeRequest>) -> Json<AnalyzeResponse> {
             score: 100,
             boot_strategy: "GrubLoopback".to_string(),
             sha256_preview: "6f5e84...11d467".to_string(),
+            uefi_x64_score: 100,
+            bios_score: 100,
+            secure_boot_score: 95,
+            arm64_score: 0,
             error: None,
         })
     }

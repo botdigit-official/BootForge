@@ -129,7 +129,7 @@ pub struct Partition {
     pub uuid: Option<String>,
 }
 
-// ── ISO Analysis Types ────────────────────────────────────────────
+// ── ISO Analysis & Intelligence Types ─────────────────────────────
 
 /// Complete analysis result for a disk image file.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -307,6 +307,10 @@ pub struct CompatibilityScore {
     pub score: u32,
     pub level: CompatLevel,
     pub details: Vec<String>,
+    pub uefi_x64_score: u8,
+    pub bios_score: u8,
+    pub secure_boot_score: u8,
+    pub arm64_score: u8,
 }
 
 /// Compatibility level classification.
@@ -381,7 +385,9 @@ pub enum Filesystem {
 pub enum BootCategory {
     Windows,
     Linux,
+    AppleRecovery,
     Bsd,
+    Specialist,
     Recovery,
     Utility,
     Firmware,
@@ -393,13 +399,106 @@ impl std::fmt::Display for BootCategory {
         match self {
             Self::Windows => write!(f, "Windows"),
             Self::Linux => write!(f, "Linux"),
+            Self::AppleRecovery => write!(f, "Apple Recovery"),
             Self::Bsd => write!(f, "BSD"),
+            Self::Specialist => write!(f, "Specialist"),
             Self::Recovery => write!(f, "Recovery"),
             Self::Utility => write!(f, "Utilities"),
             Self::Firmware => write!(f, "Firmware"),
             Self::Custom => write!(f, "Custom"),
         }
     }
+}
+
+// ── Recovery Center Types ─────────────────────────────────────────
+
+/// A categorized tool in the Recovery Suite.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RecoveryToolItem {
+    pub id: String,
+    pub name: String,
+    pub category: RecoveryCategory,
+    pub icon: String,
+    pub description: String,
+    pub size_estimate: String,
+    pub default_filename: String,
+    pub is_available: bool,
+    pub download_url: Option<String>,
+}
+
+/// Recovery categories in the suite.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum RecoveryCategory {
+    DiskRepair,
+    MemoryDiagnostics,
+    AccountPassword,
+    DataRecovery,
+    MalwareRescue,
+    HardwareTesting,
+}
+
+impl std::fmt::Display for RecoveryCategory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::DiskRepair => write!(f, "Disk Repair"),
+            Self::MemoryDiagnostics => write!(f, "Memory"),
+            Self::AccountPassword => write!(f, "Password & Account"),
+            Self::DataRecovery => write!(f, "Data Recovery"),
+            Self::MalwareRescue => write!(f, "Malware Rescue"),
+            Self::HardwareTesting => write!(f, "Hardware Diagnostics"),
+        }
+    }
+}
+
+// ── Hardware Telemetry Types ──────────────────────────────────────
+
+/// System hardware telemetry snapshot.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HardwareTelemetrySnapshot {
+    pub cpu_model: String,
+    pub cpu_architecture: String,
+    pub cpu_cores: usize,
+    pub memory_gb: u64,
+    pub memory_type: String,
+    pub firmware_type: String, // "UEFI x86_64", "Apple Silicon EFI", "Legacy BIOS"
+    pub secure_boot_active: bool,
+    pub tpm_version: String, // "2.0 (Detected)", "Not Detected"
+    pub display_resolution: String,
+    pub storage_devices: Vec<String>,
+    pub network_interfaces: Vec<String>,
+}
+
+// ── USB File Manager Types ────────────────────────────────────────
+
+/// A file or directory inside the USB storage partition.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UsbFileNode {
+    pub name: String,
+    pub relative_path: String,
+    pub is_dir: bool,
+    pub size_bytes: u64,
+    pub size_formatted: String,
+    pub extension: String,
+    pub is_bootable_iso: bool,
+    pub category: Option<String>,
+    pub sha256_hash: Option<String>,
+    pub children: Vec<UsbFileNode>,
+}
+
+// ── Boot Repair Types ─────────────────────────────────────────────
+
+/// Results of a 1-click non-destructive boot repair operation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BootRepairResult {
+    pub success: bool,
+    pub disk_id: String,
+    pub mount_point: String,
+    pub efi_restored: bool,
+    pub grub_restored: bool,
+    pub theme_restored: bool,
+    pub isos_preserved_count: usize,
+    pub message: String,
+    pub logs: Vec<String>,
 }
 
 // ── Progress Types ────────────────────────────────────────────────
