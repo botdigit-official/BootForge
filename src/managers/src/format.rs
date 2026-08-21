@@ -2,7 +2,7 @@
 //! with Progressive Fallback Hierarchy (Graphical UI -> Framebuffer -> High-Contrast Text -> Safe Mode).
 
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -278,32 +278,44 @@ pub fn format_disk_macos(
         _ => "MBRFormat",
     };
 
-    // Run Universal Multi-Boot Core Installer (Sector 0 MBR + Post-MBR Core + ESP Partition 2 + ExFAT Partition 1)
-    let script_path = "/Volumes/Mac2TB/Botdigit/Developer/Projects/BootForge/src/managers/src/install_bootforge_core.py";
-    let installer_output = Command::new("python3")
-        .args([script_path, clean_id, label])
-        .output();
+    // 1. Universal Multi-Boot Partitioning via Apple diskutil
+    let partition_output = Command::new("diskutil")
+        .args([
+            "partitionDisk",
+            clean_id,
+            "MBR",
+            "ExFAT",
+            label,
+            "250G",
+            "MS-DOS FAT16",
+            "VTOYEFI",
+            "150M",
+        ])
+        .output()
+        .map_err(|e| e.to_string())?;
 
-    match installer_output {
-        Ok(out) if out.status.success() => {
-            let out_text = String::from_utf8_lossy(&out.stdout).to_string();
-            Ok(out_text)
-        }
-        _ => {
-            // Fallback to diskutil standard format
-            let output = Command::new("diskutil")
-                .args(["eraseDisk", fs_arg, label, scheme_arg, clean_id])
-                .output()
-                .map_err(|e| e.to_string())?;
+    if partition_output.status.success() {
+        let out_text = String::from_utf8_lossy(&partition_output.stdout).to_string();
 
-            if output.status.success() {
-                let out_text = String::from_utf8_lossy(&output.stdout).to_string();
-                Ok(out_text)
-            } else {
-                let err_text = String::from_utf8_lossy(&output.stderr).to_string();
-                Err(if err_text.is_empty() { "Formatting failed".to_string() } else { err_text })
-            }
+        // 2. Install EFI Bootloader Assets to /Volumes/VTOYEFI
+        let vtoy_mount = PathBuf::from("/Volumes/VTOYEFI");
+        if vtoy_mount.exists() {
+            let efi_src = "/Volumes/Mac2TB/Botdigit/Developer/Projects/BootForge/src/managers/assets/ventoy_core/tool";
+            let _ = Command::new("cp")
+                .args(["-R", &format!("{}/..", efi_src), "/Volumes/VTOYEFI/"])
+                .output();
         }
+
+        // 3. Install Botdigit Cyber Emerald Theme to /Volumes/<LABEL>
+        let main_mount = PathBuf::from(format!("/Volumes/{}", label));
+        if main_mount.exists() {
+            let _ = install_botdigit_boot_theme(&main_mount, "Botdigit BootForge Universal Multi-Boot Studio");
+        }
+
+        Ok(out_text)
+    } else {
+        let err_text = String::from_utf8_lossy(&partition_output.stderr).to_string();
+        Err(if err_text.is_empty() { "Partitioning failed".to_string() } else { err_text })
     }
 }
 
