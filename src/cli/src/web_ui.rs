@@ -939,11 +939,16 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
         <div class="options-grid">
           <div class="option-group">
             <span class="option-title">Setup & Format Mode</span>
-            <select id="optSetupMode" class="select-input">
-              <option value="add_isos" selected>⚡ Botdigit Multi-Boot (Install Theme & Copy ISOs)</option>
-              <option value="fresh_multiboot">🔄 Fresh Drive Format (Wipe & Partition Drive)</option>
+            <select id="optSetupMode" class="select-input" onchange="toggleFormatWarning()">
+              <option value="fresh_multiboot" selected>🔄 Fresh Drive Format (Wipe & Create BOTDIGIT USB)</option>
+              <option value="add_isos">⚡ Non-Destructive (Keep Files & Inject Bootloader)</option>
               <option value="raw_flash">🧼 Single-OS Flash (Raw DD Mode)</option>
             </select>
+          </div>
+
+          <div class="option-group">
+            <span class="option-title">Volume Name (Label)</span>
+            <input type="text" id="optVolumeLabel" class="select-input" value="BOTDIGIT" style="font-family: var(--font-mono); font-weight: 700;" placeholder="BOTDIGIT">
           </div>
 
           <div class="option-group">
@@ -954,20 +959,11 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
                 <option value="MBR">MBR (BIOS+UEFI)</option>
               </select>
               <select id="optFilesystem" class="select-input" style="flex: 1;">
-                <option value="ExFAT" selected>ExFAT</option>
+                <option value="ExFAT" selected>ExFAT (Mac+PC)</option>
                 <option value="FAT32">FAT32</option>
                 <option value="NTFS">NTFS</option>
               </select>
             </div>
-          </div>
-
-          <div class="option-group">
-            <span class="option-title">Bootloader Theme</span>
-            <select id="optTheme" class="select-input">
-              <option value="botdigit_emerald" selected>⚡ Botdigit Cyber Emerald</option>
-              <option value="cyber_cyan">🌊 Botdigit Neon Cyan</option>
-              <option value="dark_slate">🌙 macOS Slate Dark</option>
-            </select>
           </div>
         </div>
       </div>
@@ -1572,7 +1568,8 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       const mode = document.getElementById('optSetupMode').value;
       const scheme = document.getElementById('optPartitionScheme').value;
       const fs = document.getElementById('optFilesystem').value;
-      const theme = document.getElementById('optTheme').value;
+      const volumeLabel = document.getElementById('optVolumeLabel')?.value?.trim() || 'BOTDIGIT';
+      let createdMountPoint = null;
 
       box.style.display = 'block';
       box.scrollIntoView({ behavior: 'smooth' });
@@ -1585,13 +1582,13 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
 
       log.textContent = `[${new Date().toLocaleTimeString()}] [Botdigit BootForge Universal Multi-Boot Studio v0.1.0]\n`;
       log.textContent += `[${new Date().toLocaleTimeString()}] Target Drive: /dev/${selectedDevice}\n`;
-      log.textContent += `[${new Date().toLocaleTimeString()}] Mode: ${mode} • Scheme: ${scheme} • FS: ${fs} • Theme: ${theme}\n`;
+      log.textContent += `[${new Date().toLocaleTimeString()}] Mode: ${mode} • Scheme: ${scheme} • FS: ${fs} • Label: ${volumeLabel}\n`;
       log.textContent += `[${new Date().toLocaleTimeString()}] Total Payload: ${totalGb} GB (${selectedIsos.length} ISO images)\n`;
 
       // Call Backend API to configure bootloader and format if requested
       try {
         phase.textContent = 'Configuring Botdigit BootForge EFI Bootloader...';
-        currentFileEl.textContent = 'Installing custom boot theme and EFI configurations';
+        currentFileEl.textContent = 'Formatting drive and injecting Botdigit Bootloader theme';
         
         const res = await fetch('/api/create-boot-drive', {
           method: 'POST',
@@ -1601,14 +1598,15 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
             mode: mode,
             partition_scheme: scheme,
             filesystem: fs,
-            volume_label: 'BOOTFORGE',
-            theme_name: theme,
+            volume_label: volumeLabel,
+            theme_name: 'botdigit_emerald',
             isos: selectedIsos.map(i => ({ file_path: i.file_path, file_name: i.file_name, display_name: i.display_name }))
           })
         });
 
         const resp = await res.json();
         if (resp.success) {
+          createdMountPoint = resp.mount_point;
           log.textContent += `[${new Date().toLocaleTimeString()}] ✓ ${resp.message}\n`;
           log.textContent += `[${new Date().toLocaleTimeString()}] ✓ Custom Botdigit Bootloader theme & EFI menus injected.\n`;
         }
@@ -1636,6 +1634,9 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
           log.textContent += `[${new Date().toLocaleTimeString()}] 🎉 Botdigit BootForge USB is ready to boot on any PC/Mac.\n`;
           log.scrollTop = log.scrollHeight;
           loadDevices();
+          if (createdMountPoint) {
+            setTimeout(() => openInFinder(createdMountPoint), 500);
+          }
           return;
         }
 
