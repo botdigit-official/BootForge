@@ -1,0 +1,74 @@
+[workspace]
+resolver = "2"
+members = [
+    "src/core",
+    "src/analyzers",
+    "src/engines",
+    "src/managers",
+    "src/cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Botdigit <hello@botdigit.com>"]
+license = "MIT"
+description = "BootForge — Universal boot media manager"
+repository = "https://github.com/botdigit/bootforge"
+homepage = "https://bootforge.dev"
+
+[workspace.dependencies]
+# CLI
+clap = { version = "4.5", features = ["derive"] }
+
+# Web / Server
+axum = "0.8"
+open = "5"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+
+# Async
+tokio = { version = "1", features = ["full"] }
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = "0.3"
+
+# Hashing
+sha2 = "0.10"
+md-5 = "0.10"
+
+# UUID
+uuid = { version = "1", features = ["v4", "serde"] }
+
+# Date/Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Filesystem
+walkdir = "2"
+tempfile = "3"
+
+# Progress
+indicatif = "0.17"
+
+# Regex
+regex = "1"
+
+# HTTP (for downloads)
+reqwest = { version = "0.12", features = ["json", "stream"] }
+
+# Directories
+dirs = "6"
+
+# Archive handling
+zip = "2"
+
+# Testing
+pretty_assertions = "1"

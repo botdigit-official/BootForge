@@ -1,0 +1,23 @@
+[package]
+name = "bootforge-analyzers"
+version.workspace = true
+edition.workspace = true
+description = "BootForge ISO/format analyzers — detection, verification, and compatibility"
+
+[dependencies]
+bootforge-core = { path = "../core" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+sha2 = { workspace = true }
+md-5 = { workspace = true }
+regex = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+walkdir = { workspace = true }
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }

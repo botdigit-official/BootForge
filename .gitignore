@@ -1,0 +1,49 @@
+# Build artifacts
+/target/
+**/target/
+
+# Dependencies
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test artifacts
+*.iso
+*.wim
+*.img
+*.vhd
+*.vhdx
+
+# Build output
+dist/
+build/
+*.dmg
+*.msi
+*.deb
+*.rpm
+*.AppImage
+
+# Temporary
+tmp/
+temp/
+scratch/

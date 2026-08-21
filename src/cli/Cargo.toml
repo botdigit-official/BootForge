@@ -1,0 +1,23 @@
+[package]
+name = "bootforge"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "BootForge — Universal boot media manager CLI & Desktop Server"
+
+[dependencies]
+bootforge-core = { path = "../core" }
+bootforge-analyzers = { path = "../analyzers" }
+bootforge-engines = { path = "../engines" }
+bootforge-managers = { path = "../managers" }
+clap = { workspace = true }
+axum = { workspace = true }
+open = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }

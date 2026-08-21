@@ -1,0 +1,19 @@
+[package]
+name = "bootforge-engines"
+version.workspace = true
+edition.workspace = true
+description = "BootForge boot engines — GRUB, EFI, Windows boot configuration"
+
+[dependencies]
+bootforge-core = { path = "../core" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+toml = { workspace = true }
+tokio = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+chrono = { workspace = true }
+
+[dev-dependencies]
+pretty_assertions = { workspace = true }
+tempfile = { workspace = true }
