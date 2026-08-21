@@ -126,13 +126,50 @@ print("✓ Successfully wrote MBR bootstrap, post-MBR core.img, and EFI system p
     mount_point = f"/Volumes/{label}"
     if os.path.exists(mount_point):
         print("5. Installing Botdigit BootForge Cyber Emerald theme...")
-        from apply_botdigit_theme import install_theme
         # install theme files
         ventoy_dir = os.path.join(mount_point, "ventoy")
-        os.makedirs(os.path.join(ventoy_dir, "theme"), exist_ok=True)
+        theme_dir = os.path.join(ventoy_dir, "theme")
+        os.makedirs(theme_dir, exist_ok=True)
         os.makedirs(os.path.join(mount_point, "images/linux"), exist_ok=True)
         os.makedirs(os.path.join(mount_point, "images/windows"), exist_ok=True)
         os.makedirs(os.path.join(mount_point, "images/rescue"), exist_ok=True)
+
+        # Write theme.txt
+        theme_txt = """# ⚡ Botdigit BootForge Theme (Responsive 1024x768 & Low-Res Safe)
+title-text: "⚡ Botdigit BootForge Universal Multi-Boot Studio"
+title-font: "Unifont Regular 20"
+title-color: "#10B981"
+message-font: "Unifont Regular 14"
+message-color: "#94A3B8"
+message-bg-color: "#07090E"
+desktop-color: "#07090E"
+
++ boot_menu {
+  left = 8%
+  top = 18%
+  width = 84%
+  height = 64%
+  item_font = "Unifont Regular 16"
+  item_color = "#94A3B8"
+  selected_item_color = "#10B981"
+  item_height = 32
+  item_padding = 8
+  item_spacing = 6
+}
+
++ progress_bar {
+  id = "__timeout__"
+  left = 8%
+  top = 88%
+  width = 84%
+  height = 10
+  text_color = "#10B981"
+  fg_color = "#10B981"
+  bg_color = "#1E293B"
+}
+"""
+        with open(os.path.join(theme_dir, "theme.txt"), "w") as tf:
+            tf.write(theme_txt)
         
         # Write ventoy.json
         import json
