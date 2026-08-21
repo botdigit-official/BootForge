@@ -595,6 +595,19 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
     <!-- Right Panel: Active Tab View -->
     <div class="content-area">
 
+      <!-- Live OS Downloader Banner -->
+      <div id="downloadBanner" style="display: none; background: rgba(6, 182, 212, 0.1); border: 1px solid rgba(6, 182, 212, 0.35); border-radius: 12px; padding: 14px 18px; box-shadow: 0 4px 20px var(--cyan-glow);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <div style="font-weight: 700; font-size: 13px; color: #67E8F9; display: flex; align-items: center; gap: 8px;">
+            <span>⬇️</span> <span id="downloadStatusText">Downloading OS Image...</span>
+          </div>
+          <div style="font-family: var(--font-mono); font-size: 11px; color: #34D399;" id="downloadSpeedText">⚡ Connecting...</div>
+        </div>
+        <div class="progress-track" style="height: 8px;">
+          <div class="progress-bar-fill" id="downloadProgressBar" style="width: 0%;"></div>
+        </div>
+      </div>
+
       <!-- 🚀 TAB 1: BOOT STUDIO -->
       <div class="tab-content active" id="tabBoot">
         <!-- Add ISO Box -->
@@ -948,14 +961,58 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
               </div>
             </div>
             <div style="font-size: 12px; color: var(--text-muted); line-height: 1.4;">${t.description}</div>
-            <button class="btn-secondary" style="width: 100%; justify-content: center; font-size: 12px;" onclick="quickAdd('${t.name}', '${t.default_filename}', 'rescue')">
-              📥 Add to Boot USB
-            </button>
+            <div style="display: flex; gap: 8px; margin-top: 4px;">
+              <button class="btn-primary" style="flex: 1; justify-content: center; font-size: 12px; padding: 8px 12px;" onclick="startDownload('${t.id}')">
+                ⬇️ Download ISO
+              </button>
+              <button class="btn-secondary" style="flex: 1; justify-content: center; font-size: 12px; padding: 8px 12px;" onclick="quickAdd('${t.name}', '${t.default_filename}', 'rescue')">
+                📥 Add to Queue
+              </button>
+            </div>
           `;
           grid.appendChild(card);
         });
       } catch (e) {
         console.error("Failed to load recovery catalog", e);
+      }
+    }
+
+    async function startDownload(itemId) {
+      const banner = document.getElementById('downloadBanner');
+      if (banner) banner.style.display = 'block';
+
+      try {
+        const res = await fetch('/api/start-download', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ item_id: itemId })
+        });
+        const r = await res.json();
+        
+        // Start polling download progress
+        const poll = setInterval(async () => {
+          const pRes = await fetch('/api/download-progress');
+          const p = await pRes.json();
+          if (p) {
+            const bar = document.getElementById('downloadProgressBar');
+            const txt = document.getElementById('downloadStatusText');
+            const spd = document.getElementById('downloadSpeedText');
+            if (bar) bar.style.width = `${p.percentage.toFixed(1)}%`;
+            if (txt) txt.textContent = p.message || 'Downloading...';
+            if (spd && p.speed_mbps > 0) spd.textContent = `⚡ ${p.speed_mbps.toFixed(1)} MB/s (ETA: ${p.eta_seconds}s)`;
+
+            if (p.is_completed) {
+              clearInterval(poll);
+              if (bar) bar.style.width = '100%';
+              if (txt) txt.textContent = `✅ ${p.file_name} downloaded successfully!`;
+              // Add to selected queue
+              quickAdd(p.file_name, p.file_name, 'rescue');
+              setTimeout(() => { if (banner) banner.style.display = 'none'; }, 4000);
+            }
+          }
+        }, 300);
+      } catch (e) {
+        alert("Download error: " + e.message);
       }
     }
 

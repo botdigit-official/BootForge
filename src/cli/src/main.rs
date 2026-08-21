@@ -202,7 +202,10 @@ async fn start_server(desired_port: u16, auto_open: bool) -> Result<(), Box<dyn 
         .route("/api/usb-files", get(api_usb_files))
         .route("/api/delete-usb-file", post(api_delete_usb_file))
         .route("/api/repair-bootloader", post(api_repair_bootloader))
-        .route("/api/recovery-catalog", get(api_recovery_catalog));
+        .route("/api/recovery-catalog", get(api_recovery_catalog))
+        .route("/api/download-catalog", get(api_download_catalog))
+        .route("/api/start-download", post(api_start_download))
+        .route("/api/download-progress", get(api_download_progress));
 
     let mut port = desired_port;
     let mut listener = None;
@@ -445,6 +448,71 @@ async fn api_recovery_catalog() -> Json<Vec<RecoveryToolItem>> {
         },
     ];
     Json(catalog)
+}
+
+use bootforge_managers::download::{
+    download_os_image, get_curated_download_catalog, DownloadItem, DownloadStatus,
+};
+
+static GLOBAL_DOWNLOAD_PROGRESS: OnceLock<Mutex<DownloadStatus>> = OnceLock::new();
+
+fn get_download_progress() -> &'static Mutex<DownloadStatus> {
+    GLOBAL_DOWNLOAD_PROGRESS.get_or_init(|| {
+        Mutex::new(DownloadStatus {
+            is_downloading: false,
+            is_completed: false,
+            is_error: false,
+            item_id: String::new(),
+            file_name: String::new(),
+            saved_path: String::new(),
+            bytes_downloaded: 0,
+            total_bytes: 0,
+            percentage: 0.0,
+            speed_mbps: 0.0,
+            eta_seconds: 0,
+            message: "Idle".to_string(),
+        })
+    })
+}
+
+async fn api_download_catalog() -> Json<Vec<DownloadItem>> {
+    Json(get_curated_download_catalog())
+}
+
+#[derive(Deserialize)]
+struct StartDownloadRequest {
+    item_id: String,
+}
+
+async fn api_start_download(Json(req): Json<StartDownloadRequest>) -> Json<ActionResponse> {
+    let catalog = get_curated_download_catalog();
+    if let Some(item) = catalog.into_iter().find(|i| i.id == req.item_id) {
+        let home = std::env::var("HOME").unwrap_or_else(|_| "/Users/botdigit".to_string());
+        let target_dir = PathBuf::from(home).join("Downloads").join("BootForge_ISOs");
+        let item_name = item.name.clone();
+
+        tokio::spawn(async move {
+            let _ = download_os_image(item, target_dir, |status| {
+                let mut p = get_download_progress().lock().unwrap();
+                *p = status;
+            }).await;
+        });
+
+        Json(ActionResponse {
+            success: true,
+            message: format!("Started downloading {} in background", item_name),
+        })
+    } else {
+        Json(ActionResponse {
+            success: false,
+            message: "Download item not found in catalog".to_string(),
+        })
+    }
+}
+
+async fn api_download_progress() -> Json<DownloadStatus> {
+    let p = get_download_progress().lock().unwrap();
+    Json(p.clone())
 }
 
 #[derive(Deserialize)]
