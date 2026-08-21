@@ -205,7 +205,8 @@ async fn start_server(desired_port: u16, auto_open: bool) -> Result<(), Box<dyn 
         .route("/api/recovery-catalog", get(api_recovery_catalog))
         .route("/api/download-catalog", get(api_download_catalog))
         .route("/api/start-download", post(api_start_download))
-        .route("/api/download-progress", get(api_download_progress));
+        .route("/api/download-progress", get(api_download_progress))
+        .route("/api/test-boot-vm", post(api_test_boot_vm));
 
     let mut port = desired_port;
     let mut listener = None;
@@ -513,6 +514,28 @@ async fn api_start_download(Json(req): Json<StartDownloadRequest>) -> Json<Actio
 async fn api_download_progress() -> Json<DownloadStatus> {
     let p = get_download_progress().lock().unwrap();
     Json(p.clone())
+}
+
+use bootforge_managers::vm::launch_live_vm_test;
+
+#[derive(Deserialize)]
+struct TestVmRequest {
+    disk_id: String,
+    #[serde(default)]
+    is_uefi: bool,
+}
+
+async fn api_test_boot_vm(Json(req): Json<TestVmRequest>) -> Json<ActionResponse> {
+    match launch_live_vm_test(&req.disk_id, req.is_uefi) {
+        Ok(msg) => Json(ActionResponse {
+            success: true,
+            message: msg,
+        }),
+        Err(e) => Json(ActionResponse {
+            success: false,
+            message: e,
+        }),
+    }
 }
 
 #[derive(Deserialize)]

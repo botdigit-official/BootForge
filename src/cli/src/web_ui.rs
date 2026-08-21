@@ -585,6 +585,12 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
           <button class="btn-secondary" style="font-size: 11px; padding: 4px 10px; flex: 1;" onclick="openSelectedMountInFinder()">📂 Open Finder</button>
           <button class="btn-secondary" style="font-size: 11px; padding: 4px 10px; flex: 1;" onclick="switchTab('tabRepair')">🛡️ Audit Boot</button>
         </div>
+        <button class="btn-primary" style="font-size: 11px; padding: 6px 10px; width: 100%; margin-top: 4px; justify-content: center;" onclick="testInVm(false)">
+          🎮 Test Boot in Live VM (ThinkPad BIOS)
+        </button>
+        <button class="btn-secondary" style="font-size: 11px; padding: 6px 10px; width: 100%; justify-content: center;" onclick="testInVm(true)">
+          ⚡ Test Boot in Live VM (UEFI Mode)
+        </button>
       </div>
 
       <div style="background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.25); border-radius: 10px; padding: 12px; font-size: 11px; color: #67E8F9;">
@@ -1060,6 +1066,24 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
         `;
       } catch (e) {
         console.error("Hardware telemetry error", e);
+      }
+    }
+
+    async function testInVm(isUefi) {
+      if (!selectedDevice) {
+        alert("Please select a target USB drive on the left.");
+        return;
+      }
+      try {
+        const res = await fetch('/api/test-boot-vm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ disk_id: selectedDevice, is_uefi: isUefi })
+        });
+        const r = await res.json();
+        alert(r.message);
+      } catch (e) {
+        alert("VM test error: " + e.message);
       }
     }
 
