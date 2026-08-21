@@ -1551,7 +1551,7 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
 
     document.getElementById('safetyCheck').addEventListener('change', checkSafetyInput);
 
-    // Live Streaming File Transfer & Writing Engine
+    // Live Synchronized File Transfer & Writing Engine
     async function executeBootDriveCreation() {
       closeSafetyModal();
       const box = document.getElementById('progressBox');
@@ -1569,7 +1569,6 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       const scheme = document.getElementById('optPartitionScheme').value;
       const fs = document.getElementById('optFilesystem').value;
       const volumeLabel = document.getElementById('optVolumeLabel')?.value?.trim() || 'BOTDIGIT';
-      let createdMountPoint = null;
 
       box.style.display = 'block';
       box.scrollIntoView({ behavior: 'smooth' });
@@ -1585,11 +1584,73 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       log.textContent += `[${new Date().toLocaleTimeString()}] Mode: ${mode} • Scheme: ${scheme} • FS: ${fs} • Label: ${volumeLabel}\n`;
       log.textContent += `[${new Date().toLocaleTimeString()}] Total Payload: ${totalGb} GB (${selectedIsos.length} ISO images)\n`;
 
-      // Call Backend API to configure bootloader and format if requested
+      let isFinished = false;
+      let createdMountPoint = null;
+
+      // Start live polling of backend progress
+      const pollTimer = setInterval(async () => {
+        try {
+          const pRes = await fetch('/api/transfer-progress');
+          const p = await pRes.json();
+          if (p) {
+            phase.textContent = p.phase || 'Writing data blocks...';
+            currentFileEl.textContent = p.current_file ? `Processing: ${p.current_file}` : p.message;
+            
+            const pct = Math.min(100, Math.max(0, p.percentage));
+            bar.style.width = pct.toFixed(1) + '%';
+            percent.textContent = Math.floor(pct) + '%';
+
+            if (p.speed_mbps > 0) {
+              speedEl.textContent = `⚡ ${p.speed_mbps.toFixed(1)} MB/s`;
+            } else if (p.is_completed) {
+              speedEl.textContent = '⚡ Completed';
+            }
+
+            if (p.total_bytes > 0) {
+              const wrGb = (p.bytes_written / (1024 * 1024 * 1024)).toFixed(2);
+              const totGb = (p.total_bytes / (1024 * 1024 * 1024)).toFixed(2);
+              copiedEl.textContent = `${wrGb} / ${totGb} GB`;
+            } else {
+              const wrGb = ((pct / 100) * parseFloat(totalGb)).toFixed(2);
+              copiedEl.textContent = `${wrGb} / ${totalGb} GB`;
+            }
+
+            if (p.eta_seconds > 0) {
+              etaEl.textContent = `⏱️ ${p.eta_seconds}s`;
+            } else if (p.is_completed) {
+              etaEl.textContent = '⏱️ 0s';
+            }
+
+            if (p.logs && p.logs.length > 0) {
+              const currentLogs = log.textContent;
+              for (const l of p.logs) {
+                if (!currentLogs.includes(l)) {
+                  log.textContent += l + '\n';
+                  log.scrollTop = log.scrollHeight;
+                }
+              }
+            }
+
+            if (p.is_completed || isFinished) {
+              clearInterval(pollTimer);
+              bar.style.width = '100%';
+              percent.textContent = '100%';
+              phase.textContent = '✨ Botdigit Multi-Boot USB Ready!';
+              currentFileEl.textContent = 'All ISO images, bootloader theme & configurations verified.';
+              spinIcon.style.display = 'none';
+              loadDevices();
+              if (createdMountPoint) {
+                setTimeout(() => openInFinder(createdMountPoint), 600);
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Progress poll error", e);
+        }
+      }, 150);
+
+      // Trigger backend formatting & copy task
       try {
-        phase.textContent = 'Configuring Botdigit BootForge EFI Bootloader...';
-        currentFileEl.textContent = 'Formatting drive and injecting Botdigit Bootloader theme';
-        
         const res = await fetch('/api/create-boot-drive', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1607,82 +1668,12 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
         const resp = await res.json();
         if (resp.success) {
           createdMountPoint = resp.mount_point;
-          log.textContent += `[${new Date().toLocaleTimeString()}] ✓ ${resp.message}\n`;
-          log.textContent += `[${new Date().toLocaleTimeString()}] ✓ Custom Botdigit Bootloader theme & EFI menus injected.\n`;
+          isFinished = true;
         }
       } catch (err) {
-        log.textContent += `[${new Date().toLocaleTimeString()}] ! Bootloader init warning: ${err.message}\n`;
+        log.textContent += `[${new Date().toLocaleTimeString()}] ❌ Error: ${err.message}\n`;
+        clearInterval(pollTimer);
       }
-
-      log.textContent += `[${new Date().toLocaleTimeString()}] Allocating high-speed 4MB chunk buffer stream...\n`;
-
-      let currentCopiedBytes = 0;
-      let isoIndex = 0;
-
-      function simulateTransferLoop() {
-        if (isoIndex >= selectedIsos.length) {
-          bar.style.width = '100%';
-          percent.textContent = '100%';
-          phase.textContent = '✨ Botdigit Multi-Boot USB Ready!';
-          currentFileEl.textContent = 'All ISO images, bootloader theme & configurations verified.';
-          speedEl.textContent = '⚡ Completed';
-          copiedEl.textContent = `${totalGb} / ${totalGb} GB`;
-          etaEl.textContent = '⏱️ 0s';
-          spinIcon.style.display = 'none';
-
-          log.textContent += `[${new Date().toLocaleTimeString()}] ✅ Synchronization flush completed.\n`;
-          log.textContent += `[${new Date().toLocaleTimeString()}] 🎉 Botdigit BootForge USB is ready to boot on any PC/Mac.\n`;
-          log.scrollTop = log.scrollHeight;
-          loadDevices();
-          if (createdMountPoint) {
-            setTimeout(() => openInFinder(createdMountPoint), 500);
-          }
-          return;
-        }
-
-        const currentIso = selectedIsos[isoIndex];
-        currentFileEl.textContent = `Copying: ${currentIso.display_name} (${currentIso.size})`;
-        phase.textContent = `Transferring: ${currentIso.display_name}...`;
-        
-        let isoTotalBytes = currentIso.size_bytes || 2_500_000_000;
-        let isoWritten = 0;
-
-        let interval = setInterval(() => {
-          let chunk = (85 + Math.random() * 35) * 1024 * 1024 * 0.15;
-          isoWritten += chunk;
-          currentCopiedBytes += chunk;
-
-          if (isoWritten >= isoTotalBytes) {
-            isoWritten = isoTotalBytes;
-            clearInterval(interval);
-            isoIndex++;
-            log.textContent += `[${new Date().toLocaleTimeString()}] ✓ Successfully transferred & verified: ${currentIso.display_name}\n`;
-            log.scrollTop = log.scrollHeight;
-            setTimeout(simulateTransferLoop, 300);
-          }
-
-          let overallPercent = Math.min(99.5, (currentCopiedBytes / totalBytes) * 100);
-          bar.style.width = overallPercent.toFixed(1) + '%';
-          percent.textContent = Math.floor(overallPercent) + '%';
-
-          let currentGb = (currentCopiedBytes / (1024 * 1024 * 1024)).toFixed(2);
-          copiedEl.textContent = `${currentGb} / ${totalGb} GB`;
-
-          let currentSpeed = (88 + Math.random() * 26).toFixed(1);
-          speedEl.textContent = `⚡ ${currentSpeed} MB/s`;
-
-          let remainingBytes = Math.max(0, totalBytes - currentCopiedBytes);
-          let etaSec = Math.ceil(remainingBytes / (parseFloat(currentSpeed) * 1024 * 1024));
-          etaEl.textContent = `⏱️ ${etaSec}s`;
-
-          if (Math.random() < 0.2) {
-            log.textContent += `[${new Date().toLocaleTimeString()}] Streamed chunk @ ${currentSpeed} MB/s -> ${currentGb}/${totalGb} GB (${Math.floor(overallPercent)}%)\n`;
-            log.scrollTop = log.scrollHeight;
-          }
-        }, 150);
-      }
-
-      simulateTransferLoop();
     }
 
     function simulateVmTest() {
