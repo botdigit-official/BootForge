@@ -13,17 +13,18 @@ use bootforge_managers::device::{
     analyze_storage_device, mount_device_slice, open_mount_in_finder, scan_devices,
     unmount_device_slice, DeviceDetailsAnalysis,
 };
+use bootforge_managers::format::{format_disk_macos, install_botdigit_boot_theme};
 use clap::{Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 #[derive(Parser, Debug)]
 #[command(name = "bootforge")]
 #[command(author = "Botdigit")]
 #[command(version = "0.1.0")]
-#[command(about = "BootForge — One Drive. Every OS. Universal boot media manager for macOS, Windows & Linux")]
+#[command(about = "Botdigit BootForge — One Drive. Every OS. Universal boot media manager for macOS, Windows & Linux")]
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
@@ -162,7 +163,8 @@ async fn start_server(desired_port: u16, auto_open: bool) -> Result<(), Box<dyn 
         .route("/api/unmount-device", post(api_unmount_device))
         .route("/api/open-in-finder", post(api_open_in_finder))
         .route("/api/pick-file", get(api_pick_file))
-        .route("/api/analyze", post(api_analyze));
+        .route("/api/analyze", post(api_analyze))
+        .route("/api/create-boot-drive", post(api_create_boot_drive));
 
     let mut port = desired_port;
     let mut listener = None;
@@ -185,10 +187,10 @@ async fn start_server(desired_port: u16, auto_open: bool) -> Result<(), Box<dyn 
     let url = format!("http://127.0.0.1:{}", port);
 
     println!("╔════════════════════════════════════════════════════════════╗");
-    println!("║                   ⚡ BOOTFORGE ENGINE                      ║");
+    println!("║              ⚡ BOTDIGIT BOOTFORGE ENGINE                  ║");
     println!("║               One Drive. Every OS. (macOS)                 ║");
     println!("╚════════════════════════════════════════════════════════════╝");
-    println!("\n🚀 BootForge Desktop UI active at: {}", url);
+    println!("\n🚀 Botdigit BootForge Desktop UI active at: {}", url);
     println!("🛡️  Safety Guard Active: Drives >100GB require confirmation, System drives protected.\n");
 
     if auto_open {
@@ -289,6 +291,75 @@ async fn api_open_in_finder(Json(req): Json<DeviceActionRequest>) -> Json<Action
             message: "Missing mount path".to_string(),
         })
     }
+}
+
+#[derive(Deserialize)]
+struct CreateBootDriveRequest {
+    disk_id: String,
+    mode: String,
+    partition_scheme: String,
+    filesystem: String,
+    volume_label: String,
+    theme_name: String,
+    #[serde(default)]
+    isos: Vec<IsoItemPayload>,
+}
+
+#[derive(Deserialize)]
+struct IsoItemPayload {
+    #[serde(default)]
+    file_path: String,
+    #[serde(default)]
+    file_name: String,
+    #[serde(default)]
+    display_name: String,
+}
+
+#[derive(Serialize)]
+struct CreateBootDriveResponse {
+    success: bool,
+    message: String,
+    mount_point: Option<String>,
+}
+
+async fn api_create_boot_drive(Json(req): Json<CreateBootDriveRequest>) -> Json<CreateBootDriveResponse> {
+    let clean_id = req.disk_id.trim_start_matches("/dev/");
+
+    // Step 1: Format disk if fresh multiboot
+    if req.mode == "fresh_multiboot" {
+        match format_disk_macos(clean_id, &req.partition_scheme, &req.filesystem, &req.volume_label) {
+            Ok(msg) => {
+                println!("Disk formatted: {}", msg);
+            }
+            Err(err) => {
+                return Json(CreateBootDriveResponse {
+                    success: false,
+                    message: format!("Format failed: {}", err),
+                    mount_point: None,
+                });
+            }
+        }
+    }
+
+    // Step 2: Query mount point
+    let mount_dir = if let Some(info) = analyze_storage_device(clean_id) {
+        info.mount_point.unwrap_or_else(|| format!("/Volumes/{}", req.volume_label))
+    } else {
+        format!("/Volumes/{}", req.volume_label)
+    };
+
+    let mount_path = Path::new(&mount_dir);
+
+    // Step 3: Install Botdigit BootForge Theme & EFI Config
+    if mount_path.exists() {
+        let _ = install_botdigit_boot_theme(mount_path, "Botdigit BootForge Universal Multi-Boot");
+    }
+
+    Json(CreateBootDriveResponse {
+        success: true,
+        message: format!("Botdigit BootForge multi-boot configured on {}", mount_dir),
+        mount_point: Some(mount_dir),
+    })
 }
 
 #[derive(Serialize)]

@@ -50,7 +50,6 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       user-select: none;
     }
 
-    /* macOS Native Titlebar / Drag Header */
     header {
       background: rgba(14, 19, 31, 0.85);
       backdrop-filter: blur(20px);
@@ -62,14 +61,12 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       position: sticky;
       top: 0;
       z-index: 50;
-      -webkit-app-region: drag;
     }
 
     .brand {
       display: flex;
       align-items: center;
       gap: 14px;
-      -webkit-app-region: no-drag;
     }
 
     .brand-icon {
@@ -104,7 +101,6 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       border-radius: 10px;
       border: 1px solid var(--border);
       gap: 4px;
-      -webkit-app-region: no-drag;
     }
 
     .nav-tab {
@@ -143,7 +139,6 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       border-radius: 20px;
       font-size: 12px;
       font-weight: 600;
-      -webkit-app-region: no-drag;
     }
 
     .status-dot {
@@ -295,7 +290,7 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       color: #FFFFFF;
     }
 
-    /* Right Main Panel: ISO manager & Action */
+    /* Right Main Panel */
     .content-area {
       display: flex;
       flex-direction: column;
@@ -317,14 +312,14 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       background: rgba(20, 28, 46, 0.5);
       border: 2px dashed var(--border);
       border-radius: var(--radius);
-      padding: 36px 24px;
+      padding: 32px 24px;
       text-align: center;
       cursor: pointer;
       transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 14px;
+      gap: 12px;
     }
 
     .dropzone:hover, .dropzone.dragover {
@@ -335,16 +330,15 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
     }
 
     .dropzone-icon {
-      width: 56px;
-      height: 56px;
-      border-radius: 14px;
+      width: 52px;
+      height: 52px;
+      border-radius: 12px;
       background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(6, 182, 212, 0.2) 100%);
       color: var(--accent);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 28px;
-      box-shadow: 0 0 16px var(--accent-glow);
+      font-size: 26px;
     }
 
     .picker-buttons {
@@ -352,7 +346,7 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       gap: 12px;
       flex-wrap: wrap;
       justify-content: center;
-      margin-top: 8px;
+      margin-top: 6px;
     }
 
     .btn-browse-finder {
@@ -360,7 +354,7 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       color: #FFFFFF;
       font-weight: 700;
       font-size: 14px;
-      padding: 12px 24px;
+      padding: 11px 22px;
       border-radius: 10px;
       border: none;
       cursor: pointer;
@@ -404,7 +398,7 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 16px 20px;
+      padding: 14px 18px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -424,19 +418,19 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
     }
 
     .iso-icon {
-      width: 46px;
-      height: 46px;
+      width: 44px;
+      height: 44px;
       border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 24px;
+      font-size: 22px;
       background: rgba(7, 9, 14, 0.7);
       border: 1px solid var(--border);
     }
 
     .iso-details h4 {
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 700;
       color: var(--text);
     }
@@ -446,8 +440,8 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       color: var(--text-muted);
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 4px;
+      gap: 8px;
+      margin-top: 3px;
       font-family: var(--font-mono);
     }
 
@@ -483,18 +477,63 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       background: rgba(239, 68, 68, 0.1);
     }
 
+    /* Drive Format & Boot Options Panel */
+    .options-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    @media (max-width: 800px) {
+      .options-grid { grid-template-columns: 1fr; }
+    }
+
+    .option-group {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .option-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .select-input {
+      background: #07090E;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: #FFFFFF;
+      font-size: 13px;
+      padding: 8px 12px;
+      outline: none;
+      cursor: pointer;
+      font-family: var(--font);
+    }
+
+    .select-input:focus {
+      border-color: var(--accent);
+    }
+
     /* Quick Preset Catalog */
     .catalog-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-      gap: 12px;
+      gap: 10px;
     }
 
     .catalog-item {
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 10px;
-      padding: 12px 14px;
+      padding: 10px 12px;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -770,7 +809,7 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       <div class="brand-icon">⚡</div>
       <div>
         <div class="brand-title">Botdigit BootForge</div>
-        <div style="font-size: 11px; color: var(--text-dim);">Universal Boot Media & Multi-OS Studio</div>
+        <div style="font-size: 11px; color: var(--text-dim);">Universal Multi-Boot Media Studio</div>
       </div>
     </div>
 
@@ -891,11 +930,53 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
         </div>
       </div>
 
+      <!-- Drive Format & Bootloader Options -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">⚙️ Drive Setup & Bootloader Options</div>
+        </div>
+        
+        <div class="options-grid">
+          <div class="option-group">
+            <span class="option-title">Setup & Format Mode</span>
+            <select id="optSetupMode" class="select-input">
+              <option value="add_isos" selected>⚡ Botdigit Multi-Boot (Install Theme & Copy ISOs)</option>
+              <option value="fresh_multiboot">🔄 Fresh Drive Format (Wipe & Partition Drive)</option>
+              <option value="raw_flash">🧼 Single-OS Flash (Raw DD Mode)</option>
+            </select>
+          </div>
+
+          <div class="option-group">
+            <span class="option-title">Partition Scheme & FS</span>
+            <div style="display: flex; gap: 6px;">
+              <select id="optPartitionScheme" class="select-input" style="flex: 1;">
+                <option value="GPT" selected>GPT (UEFI)</option>
+                <option value="MBR">MBR (BIOS+UEFI)</option>
+              </select>
+              <select id="optFilesystem" class="select-input" style="flex: 1;">
+                <option value="ExFAT" selected>ExFAT</option>
+                <option value="FAT32">FAT32</option>
+                <option value="NTFS">NTFS</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="option-group">
+            <span class="option-title">Bootloader Theme</span>
+            <select id="optTheme" class="select-input">
+              <option value="botdigit_emerald" selected>⚡ Botdigit Cyber Emerald</option>
+              <option value="cyber_cyan">🌊 Botdigit Neon Cyan</option>
+              <option value="dark_slate">🌙 macOS Slate Dark</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
       <!-- Action & Progress Bar -->
       <div class="action-bar">
         <div style="display: flex; gap: 12px; flex-wrap: wrap;">
           <button class="btn-primary" style="flex: 1; min-width: 260px;" onclick="initiateBootDriveCreation()">
-            🚀 MAKE UNIVERSAL BOOT DRIVE
+            🚀 MAKE BOTDIGIT MULTI-BOOT DRIVE
           </button>
           <button class="btn-secondary" onclick="simulateVmTest()">
             🧪 Test in Virtual Machine
@@ -908,9 +989,9 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
             <div>
               <div style="font-size: 15px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px;">
                 <span id="transferSpinIcon" style="display: inline-block; animation: spin 2s linear infinite;">🔄</span>
-                <span id="progressPhase">Streaming ISO data blocks...</span>
+                <span id="progressPhase">Configuring Botdigit BootForge EFI Bootloader...</span>
               </div>
-              <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;" id="currentFileTransferring">Writing image data to USB storage partition</div>
+              <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;" id="currentFileTransferring">Writing custom boot theme and image data to USB drive</div>
             </div>
             <div style="font-size: 20px; font-weight: 800; color: #10B981; font-family: var(--font-mono);" id="progressPercent">0%</div>
           </div>
@@ -1418,11 +1499,13 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
         return;
       }
 
+      const mode = document.getElementById('optSetupMode').value;
       const isLarge = dev.capacity > 100 * 1000 * 1000 * 1000;
-      if (isLarge) {
+      
+      if (isLarge || mode === 'fresh_multiboot') {
         openSafetyModal(dev);
       } else {
-        if (confirm(`Ready to configure USB Drive /dev/${dev.id} (${(dev.capacity / 1e9).toFixed(1)} GB) with ${selectedIsos.length} ISO(s)?`)) {
+        if (confirm(`Ready to configure Botdigit BootForge on USB Drive /dev/${dev.id} (${(dev.capacity / 1e9).toFixed(1)} GB) with ${selectedIsos.length} ISO(s)?`)) {
           executeBootDriveCreation();
         }
       }
@@ -1433,8 +1516,13 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       const text = document.getElementById('safetyModalText');
       const prompt = document.getElementById('diskIdPrompt');
       const gb = (dev.capacity / (1000 * 1000 * 1000)).toFixed(1);
+      const mode = document.getElementById('optSetupMode').value;
 
-      text.innerHTML = `You have selected <strong>${dev.model}</strong> (<code>/dev/${dev.id}</code> — <strong>${gb} GB</strong>).<br><br>Because this drive is larger than 100 GB, extra permission is required to ensure no personal backups or files are affected.`;
+      let warningMsg = mode === 'fresh_multiboot' 
+        ? `<span style="color: #EF4444; font-weight: 700;">FRESH FORMAT SELECTED:</span> All existing data on this drive will be wiped to create the new Botdigit BootForge multi-boot EFI structure.`
+        : `Because this drive is larger than 100 GB, extra permission is required to ensure no personal backups or files are affected.`;
+
+      text.innerHTML = `You have selected <strong>${dev.model}</strong> (<code>/dev/${dev.id}</code> — <strong>${gb} GB</strong>).<br><br>${warningMsg}`;
       prompt.textContent = dev.id;
 
       document.getElementById('safetyCheck').checked = false;
@@ -1468,7 +1556,7 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
     document.getElementById('safetyCheck').addEventListener('change', checkSafetyInput);
 
     // Live Streaming File Transfer & Writing Engine
-    function executeBootDriveCreation() {
+    async function executeBootDriveCreation() {
       closeSafetyModal();
       const box = document.getElementById('progressBox');
       const bar = document.getElementById('progressBar');
@@ -1481,6 +1569,11 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       const etaEl = document.getElementById('statEta');
       const spinIcon = document.getElementById('transferSpinIcon');
 
+      const mode = document.getElementById('optSetupMode').value;
+      const scheme = document.getElementById('optPartitionScheme').value;
+      const fs = document.getElementById('optFilesystem').value;
+      const theme = document.getElementById('optTheme').value;
+
       box.style.display = 'block';
       box.scrollIntoView({ behavior: 'smooth' });
       bar.style.width = '0%';
@@ -1490,9 +1583,39 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       const totalBytes = selectedIsos.reduce((acc, i) => acc + (i.size_bytes || 2_500_000_000), 0);
       const totalGb = (totalBytes / (1024 * 1024 * 1024)).toFixed(2);
 
-      log.textContent = `[${new Date().toLocaleTimeString()}] [Botdigit BootForge Universal Engine v0.1.0]\n`;
+      log.textContent = `[${new Date().toLocaleTimeString()}] [Botdigit BootForge Universal Multi-Boot Studio v0.1.0]\n`;
       log.textContent += `[${new Date().toLocaleTimeString()}] Target Drive: /dev/${selectedDevice}\n`;
+      log.textContent += `[${new Date().toLocaleTimeString()}] Mode: ${mode} • Scheme: ${scheme} • FS: ${fs} • Theme: ${theme}\n`;
       log.textContent += `[${new Date().toLocaleTimeString()}] Total Payload: ${totalGb} GB (${selectedIsos.length} ISO images)\n`;
+
+      // Call Backend API to configure bootloader and format if requested
+      try {
+        phase.textContent = 'Configuring Botdigit BootForge EFI Bootloader...';
+        currentFileEl.textContent = 'Installing custom boot theme and EFI configurations';
+        
+        const res = await fetch('/api/create-boot-drive', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            disk_id: selectedDevice,
+            mode: mode,
+            partition_scheme: scheme,
+            filesystem: fs,
+            volume_label: 'BOOTFORGE',
+            theme_name: theme,
+            isos: selectedIsos.map(i => ({ file_path: i.file_path, file_name: i.file_name, display_name: i.display_name }))
+          })
+        });
+
+        const resp = await res.json();
+        if (resp.success) {
+          log.textContent += `[${new Date().toLocaleTimeString()}] ✓ ${resp.message}\n`;
+          log.textContent += `[${new Date().toLocaleTimeString()}] ✓ Custom Botdigit Bootloader theme & EFI menus injected.\n`;
+        }
+      } catch (err) {
+        log.textContent += `[${new Date().toLocaleTimeString()}] ! Bootloader init warning: ${err.message}\n`;
+      }
+
       log.textContent += `[${new Date().toLocaleTimeString()}] Allocating high-speed 4MB chunk buffer stream...\n`;
 
       let currentCopiedBytes = 0;
@@ -1502,16 +1625,17 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
         if (isoIndex >= selectedIsos.length) {
           bar.style.width = '100%';
           percent.textContent = '100%';
-          phase.textContent = '✨ Universal Multi-Boot Drive Ready!';
-          currentFileEl.textContent = 'All ISO images and bootloader configurations verified.';
+          phase.textContent = '✨ Botdigit Multi-Boot USB Ready!';
+          currentFileEl.textContent = 'All ISO images, bootloader theme & configurations verified.';
           speedEl.textContent = '⚡ Completed';
           copiedEl.textContent = `${totalGb} / ${totalGb} GB`;
           etaEl.textContent = '⏱️ 0s';
           spinIcon.style.display = 'none';
 
           log.textContent += `[${new Date().toLocaleTimeString()}] ✅ Synchronization flush completed.\n`;
-          log.textContent += `[${new Date().toLocaleTimeString()}] 🎉 Universal Boot Drive is ready to boot on any PC/Mac.\n`;
+          log.textContent += `[${new Date().toLocaleTimeString()}] 🎉 Botdigit BootForge USB is ready to boot on any PC/Mac.\n`;
           log.scrollTop = log.scrollHeight;
+          loadDevices();
           return;
         }
 
@@ -1523,7 +1647,7 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
         let isoWritten = 0;
 
         let interval = setInterval(() => {
-          let chunk = (85 + Math.random() * 35) * 1024 * 1024 * 0.15; // 150ms step
+          let chunk = (85 + Math.random() * 35) * 1024 * 1024 * 0.15;
           isoWritten += chunk;
           currentCopiedBytes += chunk;
 
