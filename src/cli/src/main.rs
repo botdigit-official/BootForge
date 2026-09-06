@@ -25,7 +25,7 @@ use clap::{Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::net::SocketAddr;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
 use std::sync::{Mutex, OnceLock};
 
@@ -88,6 +88,25 @@ enum Commands {
     Analyze {
         /// Path to the ISO/image file
         path: PathBuf,
+    },
+    /// Format a USB drive into a Universal Botdigit BootForge Multi-Boot Drive
+    Format {
+        /// Disk identifier (e.g. disk5 or /dev/disk5)
+        id: String,
+        /// Volume label (default: BOTDIGIT)
+        #[arg(short, long, default_value = "BOTDIGIT")]
+        label: String,
+    },
+    /// Run an automated headless QEMU boot test and print a structured report
+    TestBoot {
+        /// Disk identifier (e.g. disk9 or /dev/disk9)
+        id: String,
+        /// Test with UEFI firmware (OVMF/EDK2)
+        #[arg(long)]
+        uefi: bool,
+        /// Timeout in seconds before the test is aborted (default: 60)
+        #[arg(short, long, default_value_t = 60)]
+        timeout: u64,
     },
 }
 
@@ -175,6 +194,68 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         }
+        Some(Commands::Format { id, label }) => {
+            println!("⚡ Formatting drive /dev/{} with Universal Multi-Boot Layout (Label: {})...", id, label);
+            match format_disk_macos(&id, "MBR", "ExFAT", &label) {
+                Ok(msg) => {
+                    println!("✅ Successfully formatted /dev/{}!\n{}", id, msg);
+                    println!("🎉 Drive is now ready to boot! You can drag ISO files into /Volumes/{}/images/", label);
+                }
+                Err(e) => {
+                    eprintln!("❌ Failed to format /dev/{}: {}", id, e);
+                }
+            }
+        }
+        Some(Commands::TestBoot { id, uefi, timeout }) => {
+            let firmware = if uefi { "UEFI (OVMF)" } else { "Legacy BIOS (SeaBIOS)" };
+            println!("\n╔════════════════════════════════════════════════════════════╗");
+            println!("║   ⚡ BOTDIGIT BOOTFORGE — Headless Boot Test              ║");
+            println!("╚════════════════════════════════════════════════════════════╝");
+            println!("\n  Target:       /dev/{}", id);
+            println!("  Firmware:     {}", firmware);
+            println!("  Timeout:      {}s", timeout);
+            println!("  Serial Log:   /tmp/bootforge_serial_disk{}.log", id.trim_start_matches("disk"));
+            println!("\n⏳ Launching QEMU headless boot test...\n");
+
+            match run_headless_boot_test(&id, uefi, timeout) {
+                Ok(result) => {
+                    let status_icon = if result.success { "✅ PASS" } else { "❌ FAIL" };
+                    let time_display = if result.boot_time_ms < 1000 {
+                        format!("{}ms", result.boot_time_ms)
+                    } else {
+                        format!("{:.1}s", result.boot_time_ms as f64 / 1000.0)
+                    };
+
+                    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                    println!("  BOOT TEST REPORT");
+                    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                    println!("  Result:       {}", status_icon);
+                    println!("  Firmware:     {}", result.firmware_mode);
+                    println!("  Boot Time:    {}", time_display);
+                    println!("  Boot Stage:   {}", result.boot_stage_reached);
+                    if let Some(ref err) = result.error {
+                        println!("  Error:        {}", err);
+                    }
+                    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+
+                    // Print serial output summary (last 20 lines)
+                    let lines: Vec<&str> = result.serial_output.lines().collect();
+                    let tail = if lines.len() > 20 { &lines[lines.len()-20..] } else { &lines };
+                    if !tail.is_empty() {
+                        println!("\n  Serial Console (last {} lines):", tail.len());
+                        println!("  ─────────────────────────────────────────────────────────");
+                        for line in tail {
+                            println!("  │ {}", line);
+                        }
+                        println!("  ─────────────────────────────────────────────────────────");
+                    }
+                    println!();
+                }
+                Err(e) => {
+                    eprintln!("❌ Boot test failed: {}", e);
+                }
+            }
+        }
         Some(Commands::Ui { port }) => {
             start_server(port, !cli.no_open).await?;
         }
@@ -206,7 +287,8 @@ async fn start_server(desired_port: u16, auto_open: bool) -> Result<(), Box<dyn 
         .route("/api/download-catalog", get(api_download_catalog))
         .route("/api/start-download", post(api_start_download))
         .route("/api/download-progress", get(api_download_progress))
-        .route("/api/test-boot-vm", post(api_test_boot_vm));
+        .route("/api/test-boot-vm", post(api_test_boot_vm))
+        .route("/api/test-boot-headless", post(api_test_boot_headless));
 
     let mut port = desired_port;
     let mut listener = None;
@@ -516,7 +598,7 @@ async fn api_download_progress() -> Json<DownloadStatus> {
     Json(p.clone())
 }
 
-use bootforge_managers::vm::launch_live_vm_test;
+use bootforge_managers::vm::{launch_live_vm_test, run_headless_boot_test};
 
 #[derive(Deserialize)]
 struct TestVmRequest {
@@ -534,6 +616,48 @@ async fn api_test_boot_vm(Json(req): Json<TestVmRequest>) -> Json<ActionResponse
         Err(e) => Json(ActionResponse {
             success: false,
             message: e,
+        }),
+    }
+}
+
+use bootforge_managers::vm::HeadlessBootTestResult;
+
+#[derive(Deserialize)]
+struct HeadlessBootTestRequest {
+    disk_id: String,
+    #[serde(default)]
+    is_uefi: bool,
+    #[serde(default = "default_boot_timeout")]
+    timeout_secs: u64,
+}
+
+fn default_boot_timeout() -> u64 {
+    60
+}
+
+#[derive(Serialize)]
+struct HeadlessBootTestResponse {
+    success: bool,
+    result: Option<HeadlessBootTestResult>,
+    error: Option<String>,
+}
+
+/// Run a headless QEMU boot test and return structured JSON telemetry.
+/// POST /api/test-boot-headless
+/// { "disk_id": "disk9", "is_uefi": true, "timeout_secs": 60 }
+async fn api_test_boot_headless(Json(req): Json<HeadlessBootTestRequest>) -> Json<HeadlessBootTestResponse> {
+    let timeout = req.timeout_secs.clamp(10, 300);
+
+    match run_headless_boot_test(&req.disk_id, req.is_uefi, timeout) {
+        Ok(result) => Json(HeadlessBootTestResponse {
+            success: result.success,
+            result: Some(result),
+            error: None,
+        }),
+        Err(e) => Json(HeadlessBootTestResponse {
+            success: false,
+            result: None,
+            error: Some(e),
         }),
     }
 }
@@ -578,11 +702,17 @@ async fn api_create_boot_drive(Json(req): Json<CreateBootDriveRequest>) -> Json<
 
     let task_clean_id = clean_id.clone();
     let task_label = label.clone();
+    let task_theme = if req.theme_name.is_empty() {
+        "Botdigit BootForge Universal Multi-Boot Studio".to_string()
+    } else {
+        req.theme_name.clone()
+    };
 
     // Spawn synchronous task to track live progress
     tokio::task::spawn_blocking(move || {
         let clean_id = task_clean_id;
         let label = task_label;
+        let theme_title = task_theme;
         let mut p = get_progress().lock().unwrap();
         p.is_running = true;
         p.is_completed = false;
@@ -636,7 +766,7 @@ async fn api_create_boot_drive(Json(req): Json<CreateBootDriveRequest>) -> Json<
             p.logs.push(format!("[{}] Injecting /EFI/BOOT/ and /bootforge/ themes onto {}", chrono_time(), mount_dir));
             drop(p);
 
-            let _ = install_botdigit_boot_theme(&mount_path, "Botdigit BootForge Universal Multi-Boot Studio");
+            let _ = install_botdigit_boot_theme(&mount_path, &theme_title, &label);
 
             // Step 4: Physically copy selected ISOs to destination
             let total_isos = isos.len();

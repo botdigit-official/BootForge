@@ -100,4 +100,17 @@ mod tests {
         assert_eq!(score.level, CompatLevel::Excellent);
         assert_eq!(strategy, BootStrategy::GrubLoopback);
     }
+
+    #[test]
+    fn test_boot_capabilities_detection() {
+        use bootforge_analyzers::boot_detect::detect_boot_capabilities;
+        let temp_dir = tempfile::tempdir().unwrap();
+        let dummy_iso = temp_dir.path().join("ubuntu-24.04-desktop-amd64.iso");
+        std::fs::write(&dummy_iso, b"dummy content with EFI/BOOT/BOOTX64.EFI and shimx64.efi").unwrap();
+
+        let boot_info = detect_boot_capabilities(&dummy_iso, "ubuntu-24.04-desktop-amd64.iso");
+        assert!(boot_info.uefi_capable);
+        assert!(boot_info.bios_capable);
+        assert_eq!(boot_info.secure_boot, SecureBootStatus::Supported);
+    }
 }

@@ -14,8 +14,8 @@ edition = "2021"
 authors = ["Botdigit <hello@botdigit.com>"]
 license = "MIT"
 description = "BootForge — Universal boot media manager"
-repository = "https://github.com/botdigit/bootforge"
-homepage = "https://bootforge.dev"
+repository = "https://github.com/botdigit-official/BootForge"
+homepage = "https://boot.botdigit.site"
 
 [workspace.dependencies]
 # CLI

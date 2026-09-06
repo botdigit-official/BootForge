@@ -544,3 +544,190 @@ impl std::fmt::Display for WritePhase {
         }
     }
 }
+
+// ── Persistent Device Identity ────────────────────────────────────
+
+/// Cryptographically/structurally pinned identity of a physical storage drive.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct DeviceIdentity {
+    pub os_path: String,
+    pub vendor: String,
+    pub model: String,
+    pub serial_number: String,
+    pub bus_type: UsbInterface,
+    pub total_capacity_bytes: u64,
+    pub partition_table_uuid: Option<String>,
+    pub is_removable: bool,
+    pub is_internal_system: bool,
+}
+
+// ── Safety & Transaction Engine Types ─────────────────────────────
+
+/// User-selected safety posture for block-level operations.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum SafetyLevel {
+    Normal,
+    Safe,
+    Expert,
+}
+
+/// Transaction plan with verified preconditions, operations, and rollback data.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TransactionPlan {
+    pub id: String,
+    pub target_device: DeviceIdentity,
+    pub safety_level: SafetyLevel,
+    pub created_at: DateTime<Utc>,
+    pub pre_checks_passed: bool,
+    pub operations: Vec<String>,
+    pub metadata_backup_path: Option<PathBuf>,
+    pub status: TransactionStatus,
+}
+
+/// Status of an active or past disk transaction.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum TransactionStatus {
+    PendingConfirmation,
+    Executing,
+    Verifying,
+    Committed,
+    RolledBack,
+    Failed(String),
+}
+
+// ── OS Doctor & Host System Recovery Types ─────────────────────────
+
+/// Operating system installed on host machine's internal disks.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HostOsEntry {
+    pub os_type: HostOsType,
+    pub name: String,
+    pub partition_id: String,
+    pub mount_point: Option<String>,
+    pub kernel_path: Option<String>,
+    pub efi_entry_present: bool,
+    pub bootloader_status: BootloaderStatus,
+    pub is_bootable: bool,
+}
+
+/// Host operating system family.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum HostOsType {
+    Windows,
+    Ubuntu,
+    Debian,
+    Fedora,
+    Arch,
+    GenericLinux,
+    MacOs,
+    Unknown,
+}
+
+/// Status of host bootloader integrity.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum BootloaderStatus {
+    Healthy,
+    MissingEfiEntry,
+    CorruptedBcd,
+    BrokenGrubConfig,
+    MissingKernel,
+    Unknown,
+}
+
+/// Automated diagnostic evaluation by BootForge OS Doctor.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OsDoctorDiagnosis {
+    pub scan_timestamp: DateTime<Utc>,
+    pub detected_operating_systems: Vec<HostOsEntry>,
+    pub issues_found: Vec<String>,
+    pub proposed_repairs: Vec<String>,
+    pub requires_user_confirmation: bool,
+    pub can_auto_repair: bool,
+}
+
+// ── Boot Reliability & Diagnostic Stage Types ─────────────────────
+
+/// Observable startup stages for diagnosing bootloader and kernel handoffs.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum BootStage {
+    /// BF01: Early CPU mode transition and entry point
+    Bf01KernelEntry,
+    /// BF02: Physical memory map and page table setup
+    Bf02MemoryMap,
+    /// BF03: Console initialization (Serial / Text / GOP Framebuffer)
+    Bf03ConsoleInit,
+    /// BF04: Storage controller and bus device discovery
+    Bf04StorageDiscovery,
+    /// BF05: Initramfs unpacking and root pivot
+    Bf05Initramfs,
+    /// BF06: Standalone recovery userspace daemon active
+    Bf06RecoveryUserspace,
+    /// BF07: Interactive UI ready (Text / Framebuffer GUI)
+    Bf07UiReady,
+}
+
+impl std::fmt::Display for BootStage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Bf01KernelEntry => write!(f, "[BF01] Kernel Entry Point"),
+            Self::Bf02MemoryMap => write!(f, "[BF02] Memory & Page Tables"),
+            Self::Bf03ConsoleInit => write!(f, "[BF03] Console (Serial/GOP/Text)"),
+            Self::Bf04StorageDiscovery => write!(f, "[BF04] Storage Device Discovery"),
+            Self::Bf05Initramfs => write!(f, "[BF05] Initramfs Environment"),
+            Self::Bf06RecoveryUserspace => write!(f, "[BF06] Recovery Daemons"),
+            Self::Bf07UiReady => write!(f, "[BF07] Interactive UI Ready"),
+        }
+    }
+}
+
+/// Target boot profile configuration.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum BootProfile {
+    /// Maximum compatibility: GPT + 2MiB BIOS_BOOT + FAT32 ESP + Data partition
+    MaximumCompatibility,
+    /// Modern UEFI-only GPT (FAT32 ESP + Data)
+    ModernUefiOnly,
+    /// Legacy MBR / BIOS only
+    LegacyBiosOnly,
+    /// Standalone Recovery OS only
+    RecoveryOnly,
+    /// Custom layout
+    Custom,
+}
+
+/// Active console rendering mode.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum ConsoleMode {
+    SerialDebug,
+    TextMode80x25,
+    GopFramebuffer(FramebufferInfo),
+}
+
+/// Discovered UEFI GOP / VBE framebuffer parameters.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct FramebufferInfo {
+    pub width: u32,
+    pub height: u32,
+    pub pitch: u32,
+    pub bpp: u8,
+    pub red_mask_size: u8,
+    pub green_mask_size: u8,
+    pub blue_mask_size: u8,
+    pub base_address: u64,
+}
+
+/// Structured empirical boot test result captured from QEMU/hardware test.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BootTestResult {
+    pub image_fingerprint: String,
+    pub firmware: String, // "UEFI 2.11", "Legacy BIOS (SeaBIOS)"
+    pub architecture: Architecture,
+    pub secure_boot_tested: bool,
+    pub boot_success: bool,
+    pub boot_time_ms: u64,
+    pub last_completed_stage: BootStage,
+    pub detected_loader: String,
+    pub error: Option<String>,
+}
+
+

@@ -1,4 +1,4 @@
-//! Operating system identification heuristics.
+//! Operating system identification heuristics and signatures.
 
 use bootforge_core::types::{ImageType, OsFamily, OsInfo};
 
@@ -6,13 +6,13 @@ use bootforge_core::types::{ImageType, OsFamily, OsInfo};
 pub fn identify_os_from_label(label: &str) -> OsInfo {
     let lower = label.to_lowercase();
 
-    // 1. Windows
+    // 1. Windows Installers & WinPE
     if lower.contains("windows 11") || lower.contains("win11") || lower.contains("win_11") {
         return OsInfo {
             family: OsFamily::Windows,
             distribution: Some("Windows".to_string()),
             version: Some("11".to_string()),
-            codename: None,
+            codename: Some("Sun Valley".to_string()),
             image_type: ImageType::Installer,
             display_name: "Windows 11".to_string(),
         };
@@ -27,31 +27,51 @@ pub fn identify_os_from_label(label: &str) -> OsInfo {
             display_name: "Windows 10".to_string(),
         };
     }
-    if lower.contains("windows") || lower.contains("winpe") || lower.contains("hbcd") {
+    if lower.contains("windows server") || lower.contains("winsrv") || lower.contains("srv2022") || lower.contains("srv2025") {
+        let version = if lower.contains("2025") {
+            "2025"
+        } else if lower.contains("2022") {
+            "2022"
+        } else if lower.contains("2019") {
+            "2019"
+        } else {
+            "Server"
+        };
         return OsInfo {
             family: OsFamily::Windows,
-            distribution: Some("Windows".to_string()),
+            distribution: Some("Windows Server".to_string()),
+            version: Some(version.to_string()),
+            codename: None,
+            image_type: ImageType::Installer,
+            display_name: format!("Windows Server {}", version),
+        };
+    }
+    if lower.contains("windows") || lower.contains("winpe") || lower.contains("hbcd") || lower.contains("hiren") {
+        let is_pe = lower.contains("pe") || lower.contains("hbcd") || lower.contains("hiren");
+        return OsInfo {
+            family: if is_pe { OsFamily::Recovery } else { OsFamily::Windows },
+            distribution: Some(if is_pe { "Hiren's BootCD PE".to_string() } else { "Windows".to_string() }),
             version: None,
             codename: None,
-            image_type: if lower.contains("pe") || lower.contains("hbcd") {
-                ImageType::WindowsPe
-            } else {
-                ImageType::Installer
-            },
-            display_name: "Windows".to_string(),
+            image_type: if is_pe { ImageType::WindowsPe } else { ImageType::Installer },
+            display_name: if is_pe { "Hiren's BootCD PE (WinPE)".to_string() } else { "Windows".to_string() },
         };
     }
 
     // 2. Linux Distributions
     if lower.contains("ubuntu") {
         let version = extract_version(&lower, "ubuntu");
+        let display = match &version {
+            Some(v) => format!("Ubuntu {} LTS", v),
+            None => "Ubuntu Linux".to_string(),
+        };
         return OsInfo {
             family: OsFamily::Linux,
             distribution: Some("Ubuntu".to_string()),
             version,
             codename: None,
             image_type: ImageType::Live,
-            display_name: "Ubuntu Linux".to_string(),
+            display_name: display,
         };
     }
     if lower.contains("debian") {
@@ -97,6 +117,26 @@ pub fn identify_os_from_label(label: &str) -> OsInfo {
             display_name: "Arch Linux".to_string(),
         };
     }
+    if lower.contains("manjaro") {
+        return OsInfo {
+            family: OsFamily::Linux,
+            distribution: Some("Manjaro".to_string()),
+            version: extract_version(&lower, "manjaro"),
+            codename: None,
+            image_type: ImageType::Live,
+            display_name: "Manjaro Linux".to_string(),
+        };
+    }
+    if lower.contains("pop-os") || lower.contains("pop_os") || lower.contains("popos") {
+        return OsInfo {
+            family: OsFamily::Linux,
+            distribution: Some("Pop!_OS".to_string()),
+            version: extract_version(&lower, "pop"),
+            codename: None,
+            image_type: ImageType::Live,
+            display_name: "System76 Pop!_OS".to_string(),
+        };
+    }
     if lower.contains("alpine") {
         let version = extract_version(&lower, "alpine");
         return OsInfo {
@@ -116,6 +156,66 @@ pub fn identify_os_from_label(label: &str) -> OsInfo {
             codename: None,
             image_type: ImageType::Live,
             display_name: "Kali Linux".to_string(),
+        };
+    }
+    if lower.contains("tails") {
+        return OsInfo {
+            family: OsFamily::Linux,
+            distribution: Some("Tails".to_string()),
+            version: extract_version(&lower, "tails"),
+            codename: None,
+            image_type: ImageType::Live,
+            display_name: "Tails (Privacy & Anonymity)".to_string(),
+        };
+    }
+    if lower.contains("opensuse") || lower.contains("suse") {
+        return OsInfo {
+            family: OsFamily::Linux,
+            distribution: Some("openSUSE".to_string()),
+            version: None,
+            codename: None,
+            image_type: ImageType::Live,
+            display_name: "openSUSE Linux".to_string(),
+        };
+    }
+    if lower.contains("rocky") || lower.contains("almalinux") || lower.contains("rhel") || lower.contains("centos") {
+        return OsInfo {
+            family: OsFamily::Linux,
+            distribution: Some("Enterprise Linux".to_string()),
+            version: None,
+            codename: None,
+            image_type: ImageType::Installer,
+            display_name: "Enterprise Linux".to_string(),
+        };
+    }
+    if lower.contains("proxmox") || lower.contains("pve") {
+        return OsInfo {
+            family: OsFamily::Linux,
+            distribution: Some("Proxmox VE".to_string()),
+            version: extract_version(&lower, "pve"),
+            codename: None,
+            image_type: ImageType::Installer,
+            display_name: "Proxmox Virtual Environment".to_string(),
+        };
+    }
+    if lower.contains("truenas") || lower.contains("freenas") {
+        return OsInfo {
+            family: OsFamily::Bsd,
+            distribution: Some("TrueNAS".to_string()),
+            version: None,
+            codename: None,
+            image_type: ImageType::Installer,
+            display_name: "TrueNAS Storage OS".to_string(),
+        };
+    }
+    if lower.contains("freebsd") || lower.contains("openbsd") || lower.contains("netbsd") {
+        return OsInfo {
+            family: OsFamily::Bsd,
+            distribution: Some("BSD".to_string()),
+            version: None,
+            codename: None,
+            image_type: ImageType::Installer,
+            display_name: "BSD Operating System".to_string(),
         };
     }
 
@@ -148,6 +248,26 @@ pub fn identify_os_from_label(label: &str) -> OsInfo {
             codename: None,
             image_type: ImageType::Utility,
             display_name: "MemTest86+".to_string(),
+        };
+    }
+    if lower.contains("systemrescue") || lower.contains("sysrescue") {
+        return OsInfo {
+            family: OsFamily::Recovery,
+            distribution: Some("SystemRescue".to_string()),
+            version: None,
+            codename: None,
+            image_type: ImageType::Rescue,
+            display_name: "SystemRescue Toolkit".to_string(),
+        };
+    }
+    if lower.contains("dban") || lower.contains("shredos") {
+        return OsInfo {
+            family: OsFamily::Utility,
+            distribution: Some("Disk Eraser".to_string()),
+            version: None,
+            codename: None,
+            image_type: ImageType::Utility,
+            display_name: "Drive Eraser & Sanitize".to_string(),
         };
     }
 

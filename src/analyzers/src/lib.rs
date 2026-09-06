@@ -34,12 +34,12 @@ pub async fn analyze_image(path: &Path) -> Result<IsoAnalysis> {
         .unwrap_or("image.iso")
         .to_string();
 
-    // 1. Detect format
-    let format = format_detect::detect_format(path).unwrap_or(ImageFormat::Iso9660);
+    // 1. Detect format using magic bytes and volume descriptor parser
+    let format = iso::classify_image_format(path);
 
     // 2. Compute SHA256 hash (or read sample for large files)
     let mut file = File::open(path)?;
-    let mut buffer = vec![0u8; 1024 * 1024.min(file_size as usize)];
+    let mut buffer = vec![0u8; (1024 * 1024).min(file_size as usize)];
     let bytes_read = file.read(&mut buffer).unwrap_or(0);
     let sample_hashes = hash::compute_hashes_from_bytes(&buffer[..bytes_read]);
 
@@ -50,30 +50,34 @@ pub async fn analyze_image(path: &Path) -> Result<IsoAnalysis> {
         status: VerificationStatus::Verified,
     };
 
-    // 3. Identify OS
-    let os_info = os_detect::identify_os_from_label(&file_name);
+    // 3. Identify OS (from volume label if ISO, or file name)
+    let label = if let Ok(Some(desc)) = iso::inspect_iso_descriptors(path) {
+        if !desc.volume_id.is_empty() {
+            format!("{} {}", desc.volume_id, file_name)
+        } else {
+            file_name.clone()
+        }
+    } else {
+        file_name.clone()
+    };
+
+    let os_info = os_detect::identify_os_from_label(&label);
 
     // 4. Architecture
-    let architecture = arch_detect::detect_architecture_from_str(&file_name);
+    let architecture = arch_detect::detect_architecture_from_str(&label);
 
-    // 5. Boot capability analysis
-    let boot_info = BootInfo {
-        uefi_capable: true,
-        bios_capable: os_info.family != OsFamily::Windows || file_name.contains("win10"),
-        secure_boot: if os_info.family == OsFamily::Windows || os_info.display_name.contains("Ubuntu") || os_info.display_name.contains("Fedora") {
-            SecureBootStatus::Supported
-        } else {
-            SecureBootStatus::NotSupported
-        },
-        efi_architectures: vec![architecture.to_string()],
-    };
+    // 5. Boot capability analysis (El Torito, UEFI, BIOS, Secure Boot Shim)
+    let boot_info = boot_detect::detect_boot_capabilities(path, &file_name);
 
     // 6. Compatibility Score
     let (compatibility, boot_strategy) =
         compat::evaluate_compatibility(&os_info.family, &boot_info, &hash_result, 0);
 
     let supports_persistence = os_info.family == OsFamily::Linux
-        && (os_info.display_name.contains("Ubuntu") || os_info.display_name.contains("Mint") || os_info.display_name.contains("Debian"));
+        && (os_info.display_name.contains("Ubuntu")
+            || os_info.display_name.contains("Mint")
+            || os_info.display_name.contains("Debian")
+            || os_info.display_name.contains("Pop"));
 
     let id = format!("iso-{}", uuid::Uuid::new_v4().to_string().chars().take(8).collect::<String>());
 

@@ -172,4 +172,36 @@ mod tests {
         };
         assert!(err_sys.to_string().contains("SAFETY: Refused to operate on system drive"));
     }
+
+    #[test]
+    fn test_boot_stage_telemetry_codes() {
+        assert_eq!(BootStage::Bf01KernelEntry.to_string(), "[BF01] Kernel Entry Point");
+        assert_eq!(BootStage::Bf02MemoryMap.to_string(), "[BF02] Memory & Page Tables");
+        assert_eq!(BootStage::Bf03ConsoleInit.to_string(), "[BF03] Console (Serial/GOP/Text)");
+        assert_eq!(BootStage::Bf04StorageDiscovery.to_string(), "[BF04] Storage Device Discovery");
+        assert_eq!(BootStage::Bf05Initramfs.to_string(), "[BF05] Initramfs Environment");
+        assert_eq!(BootStage::Bf06RecoveryUserspace.to_string(), "[BF06] Recovery Daemons");
+        assert_eq!(BootStage::Bf07UiReady.to_string(), "[BF07] Interactive UI Ready");
+    }
+
+    #[test]
+    fn test_device_identity_serialization() {
+        let identity = DeviceIdentity {
+            os_path: "/dev/sdb".to_string(),
+            vendor: "SanDisk".to_string(),
+            model: "Ultra USB 3.0".to_string(),
+            serial_number: "SN-987654321".to_string(),
+            bus_type: UsbInterface::Usb30,
+            total_capacity_bytes: 64_000_000_000,
+            partition_table_uuid: Some("UUID-GPT-12345".to_string()),
+            is_removable: true,
+            is_internal_system: false,
+        };
+
+        let json = serde_json::to_string(&identity).unwrap();
+        let parsed: DeviceIdentity = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.serial_number, "SN-987654321");
+        assert_eq!(parsed.bus_type, UsbInterface::Usb30);
+    }
 }
+

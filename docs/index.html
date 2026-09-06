@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BootForge — Universal Boot-Media Engineering Platform & Next-Gen Recovery OS</title>
+  
+  <!-- SEO & Social Metadata -->
+  <meta name="description" content="BootForge is the high-performance, memory-safe Rust platform that combines the multi-boot freedom of Ventoy, the fine-grained customization of Rufus, automated QEMU verification, and an emergency live Recovery OS.">
+  <meta name="keywords" content="BootForge, bootable USB, Rufus alternative, Ventoy alternative, BalenaEtcher alternative, multi-boot USB creator, Rust boot utility, Windows 11 TPM bypass USB, macOS bootable installer, Linux live recovery USB">
+  <meta name="author" content="Botdigit">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://boot.botdigit.site/">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://boot.botdigit.site/">
+  <meta property="og:title" content="BootForge — Universal Boot-Media Engineering Platform">
+  <meta property="og:description" content="Drop any ISO. Deep firmware analysis, zero bricking risk, multi-boot payloads, and instant QEMU virtual testing. Free & Open Source.">
+  <meta property="og:image" content="https://boot.botdigit.site/assets/og-preview.png">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content="https://boot.botdigit.site/">
+  <meta name="twitter:title" content="BootForge — Universal Boot-Media Engineering Platform">
+  <meta name="twitter:description" content="Rufus + Ventoy + Live Recovery OS + Boot Intelligence in 100% pure Rust. Download for macOS, Linux, and Windows.">
+  <meta name="twitter:image" content="https://boot.botdigit.site/assets/banner.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="assets/icon.png">
+  <link rel="apple-touch-icon" href="assets/icon.png">
+
+  <!-- Typography: Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@600;700;800;900&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css">
+
+  <!-- Schema.org SoftwareApplication & FAQ -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        "name": "Botdigit BootForge",
+        "operatingSystem": "macOS, Linux, Windows, Android, Live Recovery OS",
+        "applicationCategory": "UtilitiesApplication",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD"
+        },
+        "description": "Universal boot-media engineering platform and recovery operating system written in Rust.",
+        "downloadUrl": "https://boot.botdigit.site/assets/BootForge-macOS.dmg",
+        "softwareVersion": "0.1.0",
+        "author": {
+          "@type": "Organization",
+          "name": "Botdigit",
+          "url": "https://botdigit.site"
+        }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "How does BootForge compare to Rufus and Ventoy?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "BootForge combines the best of both worlds: you get multi-ISO drag-and-drop storage without reformatting (like Ventoy), deep customization including Windows 11 TPM bypass and unattended setup (like Rufus), cross-platform native support on macOS/Linux/Windows, automated headless QEMU boot validation, and a live Recovery OS."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can BootForge run on macOS Apple Silicon (M1/M2/M3/M4)?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes! BootForge has a first-class macOS engine with native Apple Silicon (ARM64) and Intel (x86_64) binaries, leveraging macOS IOKit and DiskArbitration frameworks."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How does BootForge prevent accidental drive formatting?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "BootForge incorporates a 3-layer safety transaction engine that inspects drive bus types, system mount flags, and NVMe internal storage flags, permanently locking out any OS or internal storage volumes from write operations."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <div class="grid-overlay"></div>
+
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="container nav-container">
+      <a href="#" class="nav-brand">
+        <img src="assets/icon.png" alt="BootForge Logo" class="brand-icon">
+        <span>BootForge</span>
+        <span class="brand-tag">v0.1.0</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="#simulator" class="nav-link">Studio Simulator</a></li>
+        <li><a href="#features" class="nav-link">Features</a></li>
+        <li><a href="#comparison" class="nav-link">Comparison</a></li>
+        <li><a href="#downloads" class="nav-link">Downloads</a></li>
+        <li><a href="#faq" class="nav-link">FAQ</a></li>
+      </ul>
+      <div class="nav-actions">
+        <a href="https://github.com/botdigit-official/BootForge" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+          GitHub
+        </a>
+        <a href="#downloads" class="btn btn-primary btn-sm">Get BootForge</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <header class="hero">
+    <div class="container">
+      <div class="hero-pill">
+        <span class="pulse-dot"></span>
+        <span>Universal Boot-Media Engineering Platform & Standalone Recovery OS</span>
+      </div>
+      <h1 class="hero-title">
+        Forge Any Boot Media.<br><span class="glow">Zero Corruptions. Multi-OS.</span>
+      </h1>
+      <p class="hero-desc">
+        The memory-safe Rust platform combining the multi-boot freedom of Ventoy, the precision tuning of Rufus, automated headless QEMU testing, and an industrial-strength live Recovery OS.
+      </p>
+
+      <div class="hero-actions">
+        <a href="assets/BootForge-macOS.dmg" class="btn btn-primary btn-lg" id="primaryHeroDlBtn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download for macOS (DMG)
+        </a>
+        <a href="#simulator" class="btn btn-secondary btn-lg">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Try Live Simulator
+        </a>
+        <a href="https://github.com/botdigit-official/BootForge" target="_blank" rel="noopener" class="btn btn-cyan btn-lg">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          Documentation
+        </a>
+      </div>
+
+      <div class="cli-box">
+        <span style="color:var(--text-subtle);">$</span>
+        <span class="cli-cmd" id="cliText">cargo install bootforge-cli</span>
+        <button class="cli-copy-btn" id="cliCopyBtn">Copy</button>
+      </div>
+
+      <div class="showcase-banner-wrapper">
+        <img src="assets/banner.png" alt="BootForge Industrial Engineering Platform Banner" class="showcase-banner-img">
+      </div>
+    </div>
+  </header>
+
+  <!-- Interactive Studio Simulator -->
+  <section class="simulator-section" id="simulator">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Interactive Simulation</span>
+        <h2 class="section-title">The BootForge Studio Experience</h2>
+        <p class="section-desc">Experience how BootForge dynamically inspects ISO payloads, partitions storage with multi-boot stub injection, and guarantees bootability with virtualized verification.</p>
+      </div>
+
+      <div class="simulator-card">
+        <div class="sim-topbar">
+          <div class="sim-traffic-lights">
+            <span class="light red"></span>
+            <span class="light yellow"></span>
+            <span class="light green"></span>
+          </div>
+          <div class="sim-title">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-orange)" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            BootForge Engine v0.1.0 — Flash & Verification Suite
+          </div>
+          <div style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--accent-cyan);">
+            MEMORY-SAFE RUST CORE
+          </div>
+        </div>
+
+        <div class="sim-body">
+          <!-- Left: Controls -->
+          <div class="sim-controls">
+            <div class="iso-picker-label">
+              <span>Select Target Image Payload:</span>
+              <span style="color:var(--accent-orange); font-size: 0.75rem;">Multi-ISO Capable</span>
+            </div>
+
+            <div class="iso-preset-grid">
+              <button class="iso-btn active" data-name="Windows 11 Pro 24H2" data-size="5.8 GB" data-arch="x86_64 / ARM64" data-features="TPM 2.0 Bypass + SecureBoot Fix + Unattend">
+                <span class="iso-name">Windows 11 Pro 24H2</span>
+                <span class="iso-meta">5.8 GB • TPM Bypass</span>
+              </button>
+              <button class="iso-btn" data-name="Ubuntu 24.04 LTS Noble" data-size="4.1 GB" data-arch="x86_64" data-features="Hybrid UEFI + Persistent Casper">
+                <span class="iso-name">Ubuntu 24.04 LTS</span>
+                <span class="iso-meta">4.1 GB • Persistent Live</span>
+              </button>
+              <button class="iso-btn" data-name="macOS Sequoia Installer" data-size="13.2 GB" data-arch="Apple Silicon / Intel" data-features="APFS + OpenCore Pre-boot">
+                <span class="iso-name">macOS Sequoia</span>
+                <span class="iso-meta">13.2 GB • Dual Architecture</span>
+              </button>
+              <button class="iso-btn" data-name="BootForge Recovery OS" data-size="850 MB" data-arch="Universal UEFI" data-features="OS Doctor + Memory Diagnostic + Clone">
+                <span class="iso-name">BootForge Doctor OS</span>
+                <span class="iso-meta">850 MB • Live Emergency OS</span>
+              </button>
+            </div>
+
+            <div class="hardware-box">
+              <div class="hardware-row">
+                <span class="hw-label">Target USB Media:</span>
+                <span class="hw-val">SanDisk Extreme Pro (128 GB)</span>
+              </div>
+              <div class="hardware-row">
+                <span class="hw-label">Bus & Interface:</span>
+                <span class="hw-val">USB 3.2 Gen 2 (10 Gbps)</span>
+              </div>
+              <div class="hardware-row">
+                <span class="hw-label">Safety Heuristic:</span>
+                <span class="safe-badge">✓ Internal Drives Locked</span>
+              </div>
+              <div class="hardware-row">
+                <span class="hw-label">Boot Architecture:</span>
+                <span class="hw-val">UEFI (GPT) + Legacy BIOS (MBR)</span>
+              </div>
+            </div>
+
+            <button class="btn btn-primary" id="startForgeBtn" style="width: 100%; padding: 0.9rem;">
+              ⚡ Forge Bootable Media & Test
+            </button>
+          </div>
+
+          <!-- Right: Interactive Terminal & Verification -->
+          <div class="sim-console">
+            <div style="border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.5rem; margin-bottom: 0.75rem; display: flex; justify-content: space-between; font-size: 0.75rem;">
+              <span style="color:var(--text-subtle);">CONSOLE JOURNAL</span>
+              <span id="simStatusBadge" style="color:var(--accent-green); font-weight: 700;">READY</span>
+            </div>
+
+            <div class="log-feed" id="simLogFeed">
+              <div class="log-entry info"><span>[INIT] Storage subsystem initialized. Found 1 qualified removable media.</span></div>
+              <div class="log-entry info"><span>[READY] Target image selected. Press "Forge Bootable Media" to begin.</span></div>
+            </div>
+
+            <div class="sim-progress-wrap">
+              <div class="sim-progress-bar-bg">
+                <div class="sim-progress-bar-fill" id="simProgressFill"></div>
+              </div>
+              <div class="sim-status-row">
+                <span>Progress: <strong id="simProgressText" style="color:var(--text-main);">0%</strong></span>
+                <span>Speed: <strong id="simSpeedText" style="color:var(--accent-cyan);">Idle</strong></span>
+                <span>Verification: <strong style="color:var(--accent-green);">Auto-QEMU Enabled</strong></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Grid -->
+  <section class="container" id="features" style="padding: 4rem 1.5rem;">
+    <div class="section-header">
+      <span class="section-tag">Engineering Highlights</span>
+      <h2 class="section-title">Built for Systems Engineers & Everyday Users</h2>
+      <p class="section-desc">Traditional flashers treat storage like a raw tape. BootForge treats boot media as an engineered, multi-payload operating environment.</p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon-wrap">⚡</div>
+        <h3>Multi-Boot & Live ISO Stacking</h3>
+        <p>Drop multiple Windows, Linux, and Rescue ISOs onto a single USB stick without destructive formatting. BootForge's EFI chainloader dynamically detects payloads at runtime.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-wrap">🛡️</div>
+        <h3>Triple-Layer Anti-Brick Heuristics</h3>
+        <p>Accidentally wiping your main SSD is mathematically impossible. Our safety transaction journal interrogates IOKit, ioctl, and Win32 volume properties before every write.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-wrap">🖥️</div>
+        <h3>Automated Headless QEMU Verification</h3>
+        <p>Never walk over to another PC only to discover your USB won't boot. BootForge automatically spawns an ephemeral virtual machine to empirically verify boot handoff.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-wrap">🩺</div>
+        <h3>Built-In OS Doctor & Recovery OS</h3>
+        <p>Includes a lightweight live Rust-powered Linux recovery environment to repair damaged BCD stores, test RAM, recover lost partitions, and clone damaged disks.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-wrap">🪟</div>
+        <h3>Windows 11 Customization Engine</h3>
+        <p>Bypass TPM 2.0, Secure Boot, minimum RAM checks, and mandatory Microsoft Account creation with clean XML unattended answers—zero third-party bloat.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-wrap">🦀</div>
+        <h3>Memory-Safe Pure Rust Engine</h3>
+        <p>Zero buffer overflows, deterministic memory management, cross-compiled for Apple Silicon, Intel x86_64, ARM64 Linux, and Windows 10/11.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Comparison Matrix -->
+  <section class="comparison-section" id="comparison">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Comprehensive Matrix</span>
+        <h2 class="section-title">Why Developers & Sysadmins Choose BootForge</h2>
+        <p class="section-desc">Compare BootForge against industry tools like Rufus, Ventoy, and BalenaEtcher.</p>
+      </div>
+
+      <div class="table-responsive">
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>Feature Capability</th>
+              <th class="highlight-col">⚡ BootForge</th>
+              <th>Rufus</th>
+              <th>Ventoy</th>
+              <th>BalenaEtcher</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Native macOS Support (Apple Silicon & Intel)</td>
+              <td class="highlight-col"><span class="check">✓</span> Yes (Native)</td>
+              <td><span class="cross">✕</span> Windows Only</td>
+              <td><span class="cross">✕</span> CLI script only</td>
+              <td><span class="check">✓</span> Electron GUI</td>
+            </tr>
+            <tr>
+              <td>Multi-Boot Dynamic ISO Stacking</td>
+              <td class="highlight-col"><span class="check">✓</span> Yes</td>
+              <td><span class="cross">✕</span> Single-ISO only</td>
+              <td><span class="check">✓</span> Yes</td>
+              <td><span class="cross">✕</span> Single-ISO only</td>
+            </tr>
+            <tr>
+              <td>Automated Headless QEMU Boot Verification</td>
+              <td class="highlight-col"><span class="check">✓</span> Built-in</td>
+              <td><span class="cross">✕</span> No</td>
+              <td><span class="cross">✕</span> No</td>
+              <td><span class="cross">✕</span> No</td>
+            </tr>
+            <tr>
+              <td>Windows 11 TPM / RAM / Account Bypass</td>
+              <td class="highlight-col"><span class="check">✓</span> Yes (Auto)</td>
+              <td><span class="check">✓</span> Yes</td>
+              <td><span class="cross">✕</span> Requires plugins</td>
+              <td><span class="cross">✕</span> No</td>
+            </tr>
+            <tr>
+              <td>Live Recovery OS & Disk Doctor</td>
+              <td class="highlight-col"><span class="check">✓</span> Bundled</td>
+              <td><span class="cross">✕</span> No</td>
+              <td><span class="cross">✕</span> No</td>
+              <td><span class="cross">✕</span> No</td>
+            </tr>
+            <tr>
+              <td>Pure Memory-Safe Rust Architecture</td>
+              <td class="highlight-col"><span class="check">✓</span> 100% Rust</td>
+              <td><span class="cross">✕</span> C/Win32</td>
+              <td><span class="cross">✕</span> C/Bash</td>
+              <td><span class="cross">✕</span> Node.js / Electron (400MB)</td>
+            </tr>
+            <tr>
+              <td>Anti-Brick Protection System</td>
+              <td class="highlight-col"><span class="check">✓</span> 3-Layer Hardware Guard</td>
+              <td><span class="check">✓</span> Basic</td>
+              <td><span class="cross">✕</span> High brick risk</td>
+              <td><span class="cross">✕</span> Basic</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Downloads Section -->
+  <section class="downloads-section" id="downloads">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Direct Downloads</span>
+        <h2 class="section-title">Get BootForge for Your Workstation</h2>
+        <p class="section-desc">Free and open source under the MIT License. Ready for professional field deployment.</p>
+      </div>
+
+      <div class="download-grid">
+        <!-- macOS -->
+        <div class="dl-card" id="dl-mac">
+          <div>
+            <div class="dl-platform-icon">🍏</div>
+            <h3>macOS Universal</h3>
+            <div class="dl-version">v0.1.0 • Apple Silicon & Intel (6.3 MB)</div>
+            <p>Native macOS installer packaged as a signed DMG with support for Ventura, Sonoma, and Sequoia.</p>
+          </div>
+          <a href="assets/BootForge-macOS.dmg" class="btn btn-primary" style="width: 100%;">
+            Download DMG (.dmg)
+          </a>
+        </div>
+
+        <!-- Linux -->
+        <div class="dl-card" id="dl-linux">
+          <div>
+            <div class="dl-platform-icon">🐧</div>
+            <h3>Linux (x86_64 / ARM64)</h3>
+            <div class="dl-version">v0.1.0 • AppImage & Deb</div>
+            <p>Runs seamlessly on Ubuntu, Debian, Fedora, Arch Linux, and Alpine with zero external dependencies.</p>
+          </div>
+          <a href="https://github.com/botdigit-official/BootForge/releases" target="_blank" rel="noopener" class="btn btn-secondary" style="width: 100%;">
+            Download AppImage / .deb
+          </a>
+        </div>
+
+        <!-- Windows -->
+        <div class="dl-card" id="dl-win">
+          <div>
+            <div class="dl-platform-icon">🪟</div>
+            <h3>Windows 10 / 11</h3>
+            <div class="dl-version">v0.1.0 • Portable & MSI</div>
+            <p>Single portable executable with elevated volume locking and native Windows VDS storage integration.</p>
+          </div>
+          <a href="https://github.com/botdigit-official/BootForge/releases" target="_blank" rel="noopener" class="btn btn-secondary" style="width: 100%;">
+            Download Windows (.exe)
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ Section -->
+  <section class="faq-section" id="faq">
+    <div class="section-header">
+      <span class="section-tag">Common Questions</span>
+      <h2 class="section-title">Frequently Asked Questions</h2>
+    </div>
+
+    <div class="faq-item active">
+      <div class="faq-question">
+        <span>What makes BootForge safer than traditional flashers?</span>
+        <span class="faq-chevron">▼</span>
+      </div>
+      <div class="faq-answer">
+        Traditional tools often let users accidentally select internal SSDs or backup drives. BootForge inspects drive topology, bus type (USB, Thunderbolt, NVMe), partition schemes, and operating system mount flags. If a target drive contains an active OS or system volume, the write engine refuses to execute.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-question">
+        <span>Can I store regular files on the USB alongside bootable ISOs?</span>
+        <span class="faq-chevron">▼</span>
+      </div>
+      <div class="faq-answer">
+        Yes! BootForge formats the data partition as ExFAT, which is universally read/writable across macOS, Windows, Linux, and Android. You can drag and drop photos, documents, and videos onto the same flash drive without interfering with bootable systems.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-question">
+        <span>Does BootForge support creating macOS bootable installers on a Mac?</span>
+        <span class="faq-chevron">▼</span>
+      </div>
+      <div class="faq-answer">
+        Yes. BootForge natively parses macOS installer applications (e.g., "Install macOS Sequoia.app"), extracts `createinstallmedia` parameters, and properly writes GPT partitions with APFS and Preboot environments.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-question">
+        <span>Is BootForge completely open source?</span>
+        <span class="faq-chevron">▼</span>
+      </div>
+      <div class="faq-answer">
+        Yes, BootForge is 100% open source under the permissive MIT license. The entire engine, analyzers, and recovery suite can be audited and contributed to on GitHub.
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1rem;">
+            <img src="assets/icon.png" alt="BootForge" style="width: 28px; height: 28px; border-radius: 6px;">
+            <strong style="color: var(--text-main); font-size: 1.15rem; font-family: var(--font-display);">Botdigit BootForge</strong>
+          </div>
+          <p style="font-size: 0.9rem; line-height: 1.6; max-width: 320px; color: var(--text-muted);">
+            Engineered by Botdigit. The universal boot-media engineering platform and recovery operating system for modern hardware.
+          </p>
+        </div>
+
+        <div class="footer-col">
+          <h4>Product</h4>
+          <ul>
+            <li><a href="#simulator">Studio Simulator</a></li>
+            <li><a href="#features">Features</a></li>
+            <li><a href="#comparison">Comparison Matrix</a></li>
+            <li><a href="#downloads">Downloads</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>Resources</h4>
+          <ul>
+            <li><a href="https://github.com/botdigit-official/BootForge" target="_blank" rel="noopener">GitHub Repository</a></li>
+            <li><a href="https://github.com/botdigit-official/BootForge/issues" target="_blank" rel="noopener">Issue Tracker</a></li>
+            <li><a href="https://wifi.botdigit.site" target="_blank" rel="noopener">ZeroDrop Wi-Fi</a></li>
+            <li><a href="https://botdigit.site" target="_blank" rel="noopener">Botdigit Ecosystem</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-col">
+          <h4>Open Source</h4>
+          <ul>
+            <li><a href="https://github.com/botdigit-official/BootForge/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a></li>
+            <li><a href="https://github.com/botdigit-official/BootForge/releases" target="_blank" rel="noopener">Releases & Tags</a></li>
+            <li><a href="https://github.com/botdigit-official/BootForge/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">Contributing</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <span>© 2026 Botdigit Inc. All rights reserved.</span>
+        <span>Built with Rust, Tauri 2, and Web Standards.</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
