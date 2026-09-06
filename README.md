@@ -6,10 +6,10 @@
 <h3 align="center"><em>Universal Boot-Media Engineering Platform & Standalone Recovery OS</em></h3>
 
 <p align="center">
-  <a href="https://boot.botdigit.site/"><img src="https://img.shields.io/badge/Website-boot.botdigit.site-ff6b00?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Website"></a>
+  <a href="https://botdigit.com"><img src="https://img.shields.io/badge/Developed%20by-Botdigit.com-ff6b00?style=for-the-badge&logo=firefox&logoColor=white" alt="Botdigit"></a>
+  <a href="https://boot.botdigit.site/"><img src="https://img.shields.io/badge/Website-boot.botdigit.site-00f0ff?style=for-the-badge&logo=googlechrome&logoColor=black" alt="Website"></a>
   <a href="https://github.com/botdigit-official/BootForge"><img src="https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20Recovery%20OS-000000?style=for-the-badge&logo=apple&logoColor=white" alt="Cross-Platform"></a>
   <a href="https://github.com/botdigit-official/BootForge"><img src="https://img.shields.io/badge/Engine-Rust%202021%20%2F%202024-orange?style=for-the-badge&logo=rust&logoColor=white" alt="Rust Core"></a>
-  <a href="https://github.com/botdigit-official/BootForge"><img src="https://img.shields.io/badge/Desktop-Tauri%202%20%2B%20React-24C8D8?style=for-the-badge&logo=tauri&logoColor=white" alt="Tauri"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License"></a>
 </p>
 
@@ -18,14 +18,17 @@
 </p>
 
 > **BootForge = Rufus + Ventoy + Rescue OS + Disk Doctor + Boot Intelligence**  
-> An industrial-grade, memory-safe cross-platform boot-media engineering platform and standalone recovery operating environment. Drop any disk image—BootForge deeply analyzes it, deduces firmware compatibility, safely crafts multi-boot storage media, tests it in automated virtual environments, and provides a full-featured live Recovery OS when systems fail.
+> An industrial-grade, memory-safe cross-platform boot-media engineering platform and standalone recovery operating environment by [Botdigit](https://botdigit.com). Drop any disk image—BootForge deeply analyzes it, deduces firmware compatibility, safely crafts multi-boot storage media, tests it in automated virtual environments, and provides a full-featured live Recovery OS when systems fail.
 
 ---
 
 ### 🌐 Official Links & Downloads
 
+- 🏢 **Official Publisher:** [https://botdigit.com](https://botdigit.com)
 - 🌍 **Official Landing Page & Simulator:** [https://boot.botdigit.site/](https://boot.botdigit.site/)
-- 🍏 **Direct macOS Universal DMG:** [BootForge-macOS.dmg](https://boot.botdigit.site/assets/BootForge-macOS.dmg) (Apple Silicon & Intel)
+- 🍏 **macOS Universal DMG:** [BootForge-macOS.dmg](https://boot.botdigit.site/assets/BootForge-macOS.dmg) (Apple Silicon & Intel)
+- 🪟 **Windows 64-bit EXE:** [BootForge-Setup-x64.exe](https://github.com/botdigit-official/BootForge/releases)
+- 🐧 **Linux AppImage & Deb:** [BootForge Linux Releases](https://github.com/botdigit-official/BootForge/releases)
 - 📦 **Install CLI via Cargo:**
   ```bash
   cargo install bootforge-cli

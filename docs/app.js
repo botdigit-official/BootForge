@@ -1,26 +1,75 @@
-// BootForge Interactive Engine & Web Simulator
+// BootForge Interactive Engine, Simulator & Download Center
 document.addEventListener('DOMContentLoaded', () => {
-  // 1. Copy CLI command helper
-  const copyBtn = document.getElementById('cliCopyBtn');
-  const cliText = document.getElementById('cliText');
-  if (copyBtn && cliText) {
-    copyBtn.addEventListener('click', async () => {
+  // 1. Generic Clipboard Copy Helper
+  document.querySelectorAll('.copy-mini-btn, #cliCopyBtn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const targetId = btn.dataset.copyTarget;
+      let textToCopy = '';
+      if (targetId) {
+        const el = document.getElementById(targetId);
+        if (el) textToCopy = el.innerText.trim();
+      } else {
+        const parentSnippet = btn.closest('.cmd-snippet, .cli-box');
+        if (parentSnippet) {
+          const codeEl = parentSnippet.querySelector('code, span:not(button)');
+          if (codeEl) textToCopy = codeEl.innerText.trim();
+        }
+      }
+
+      if (!textToCopy) return;
+
       try {
-        await navigator.clipboard.writeText(cliText.innerText.trim());
-        const originalText = copyBtn.innerText;
-        copyBtn.innerText = 'Copied!';
-        copyBtn.style.background = 'var(--accent-green)';
+        await navigator.clipboard.writeText(textToCopy);
+        const originalText = btn.innerText;
+        btn.innerText = 'Copied!';
+        btn.style.background = 'var(--accent-green)';
+        btn.style.color = '#fff';
         setTimeout(() => {
-          copyBtn.innerText = originalText;
-          copyBtn.style.background = '';
+          btn.innerText = originalText;
+          btn.style.background = '';
+          btn.style.color = '';
         }, 2000);
       } catch (err) {
-        console.error('Clipboard copy failed', err);
+        console.error('Copy failed:', err);
       }
     });
+  });
+
+  // 2. Download Tabs Switcher
+  const tabBtns = document.querySelectorAll('.tab-btn');
+  const tabContents = document.querySelectorAll('.tab-content');
+
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabBtns.forEach(b => b.classList.remove('active'));
+      tabContents.forEach(c => c.classList.remove('active'));
+
+      btn.classList.add('active');
+      const targetTab = document.getElementById(btn.dataset.tab);
+      if (targetTab) {
+        targetTab.classList.add('active');
+      }
+    });
+  });
+
+  // 3. Client OS Detection & Auto-Tab
+  const userAgent = window.navigator.userAgent.toLowerCase();
+  let defaultTab = 'tab-mac';
+
+  if (userAgent.includes('win')) {
+    defaultTab = 'tab-win';
+  } else if (userAgent.includes('linux')) {
+    defaultTab = 'tab-linux';
+  } else if (userAgent.includes('mac')) {
+    defaultTab = 'tab-mac';
   }
 
-  // 2. FAQ Accordion
+  const matchingTabBtn = document.querySelector(`.tab-btn[data-tab="${defaultTab}"]`);
+  if (matchingTabBtn) {
+    matchingTabBtn.click();
+  }
+
+  // 4. FAQ Accordion
   const faqItems = document.querySelectorAll('.faq-item');
   faqItems.forEach(item => {
     const q = item.querySelector('.faq-question');
@@ -35,23 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // 3. Client OS Detection
-  const userAgent = window.navigator.userAgent.toLowerCase();
-  const macCard = document.getElementById('dl-mac');
-  const winCard = document.getElementById('dl-win');
-  const linuxCard = document.getElementById('dl-linux');
-
-  if (userAgent.includes('mac')) {
-    macCard?.classList.add('highlight');
-  } else if (userAgent.includes('win')) {
-    winCard?.classList.add('highlight');
-    macCard?.classList.remove('highlight');
-  } else if (userAgent.includes('linux')) {
-    linuxCard?.classList.add('highlight');
-    macCard?.classList.remove('highlight');
-  }
-
-  // 4. BootForge Studio Simulator
+  // 5. BootForge Studio Simulator
   const isoButtons = document.querySelectorAll('.iso-btn');
   const forgeBtn = document.getElementById('startForgeBtn');
   const logFeed = document.getElementById('simLogFeed');
@@ -79,7 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
         arch: btn.dataset.arch || "x86_64",
         features: btn.dataset.features || "Standard UEFI Boot"
       };
-      appendLog(`[SELECT] Switched target image to: ${selectedIso.name} (${selectedIso.size})`, 'cyan');
+      appendLog(`[SELECT] Switched target image payload to: ${selectedIso.name} (${selectedIso.size})`, 'cyan');
     });
   });
 
@@ -103,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function runForgeSimulation() {
     isForging = true;
     forgeBtn.disabled = true;
-    forgeBtn.innerText = '⚡ Forging Media...';
+    forgeBtn.innerText = '⚡ Forging Storage Media...';
     forgeBtn.style.opacity = '0.7';
 
     if (logFeed) logFeed.innerHTML = '';
@@ -116,15 +149,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const steps = [
-      { pct: 5, log: `[ANALYZE] Opening storage handle to /dev/disk4 [SanDisk Extreme Pro 128GB]`, type: 'info', speed: 'N/A' },
-      { pct: 15, log: `[SAFETY] Verifying anti-brick heuristics: Disk is removable, not system volume. PASSED.`, type: 'success', speed: 'N/A' },
+      { pct: 5, log: `[STORAGE] Acquiring direct descriptor handle: /dev/disk4 [SanDisk Extreme Pro 128GB]`, type: 'info', speed: 'N/A' },
+      { pct: 15, log: `[SAFETY] Hardware heuristic check: Bus=USB 3.2, Removable=true, SystemDrive=false. PASSED.`, type: 'success', speed: 'N/A' },
       { pct: 25, log: `[IMAGE] Deep-analyzing ${selectedIso.name}: Found valid UDF 1.02 filesystem and EFI/BOOT/BOOTX64.EFI`, type: 'cyan', speed: 'N/A' },
-      { pct: 35, log: `[PARTITION] Creating hybrid GPT layout: EFI ESP (FAT32, 100MB) + Payloads (ExFAT, 119GB)`, type: 'info', speed: '380 MB/s' },
-      { pct: 55, log: `[BOOTLOADER] Generating BootForge UEFI bootloader chain with secure stub injection`, type: 'active', speed: '420 MB/s' },
-      { pct: 75, log: `[STREAM] Direct block-level zero-copy payload transfer: 100% of ${selectedIso.size} committed`, type: 'active', speed: '450 MB/s' },
-      { pct: 88, log: `[HASH] Verifying cryptographic SHA-256 block digest... MATCHED.`, type: 'success', speed: '410 MB/s' },
+      { pct: 38, log: `[PARTITION] Creating hybrid GPT layout: ESP (FAT32, 100MB) + Data (ExFAT, 119GB) + Doctor OS (850MB)`, type: 'info', speed: '380 MB/s' },
+      { pct: 55, log: `[BOOTLOADER] Compiling BootForge UEFI dynamic chainloader with Ventoy & Limine fallback stubs`, type: 'active', speed: '420 MB/s' },
+      { pct: 72, log: `[STREAM] Direct block-level zero-copy payload transfer: 100% of ${selectedIso.size} written`, type: 'active', speed: '465 MB/s' },
+      { pct: 88, log: `[HASH] Verifying SHA-256 block digest across 11,324 chunks... MATCHED.`, type: 'success', speed: '440 MB/s' },
       { pct: 95, log: `[QEMU] Spawning headless QEMU virtual test harness to test UEFI handoff...`, type: 'cyan', speed: 'Testing' },
-      { pct: 100, log: `[SUCCESS] Virtual boot test passed in 1.4s! Drive is ready for deployment.`, type: 'success', speed: 'Complete' }
+      { pct: 100, log: `[SUCCESS] Virtual boot test passed in 1.2s! Media is ready for deployment.`, type: 'success', speed: 'Complete' }
     ];
 
     let currentStep = 0;
@@ -137,11 +170,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (speedText) speedText.innerText = item.speed;
         appendLog(item.log, item.type);
         currentStep++;
-        setTimeout(nextStep, 650);
+        setTimeout(nextStep, 600);
       } else {
         isForging = false;
         forgeBtn.disabled = false;
-        forgeBtn.innerText = '✓ Drive Forged Successfully! (Run Again)';
+        forgeBtn.innerText = '✓ Storage Forged Successfully! (Run Again)';
         forgeBtn.style.opacity = '1';
         if (statusBadge) {
           statusBadge.innerText = 'VERIFIED BOOTABLE';

@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BootForge — Universal Boot-Media Engineering Platform & Next-Gen Recovery OS</title>
+  <title>BootForge — Universal Boot-Media Engineering Platform & Standalone Recovery OS | by Botdigit</title>
   
   <!-- SEO & Social Metadata -->
-  <meta name="description" content="BootForge is the high-performance, memory-safe Rust platform that combines the multi-boot freedom of Ventoy, the fine-grained customization of Rufus, automated QEMU verification, and an emergency live Recovery OS.">
-  <meta name="keywords" content="BootForge, bootable USB, Rufus alternative, Ventoy alternative, BalenaEtcher alternative, multi-boot USB creator, Rust boot utility, Windows 11 TPM bypass USB, macOS bootable installer, Linux live recovery USB">
+  <meta name="description" content="BootForge is the high-performance Rust boot-media engineering platform by Botdigit. Combines Rufus, Ventoy, live OS Doctor, and automated QEMU verification. Download for macOS, Windows, and Linux.">
+  <meta name="keywords" content="BootForge, Botdigit, botdigit.com, bootable USB, Rufus alternative, Ventoy alternative, BalenaEtcher alternative, multi-boot USB creator, Rust boot utility, Windows 11 TPM bypass USB, macOS bootable installer, Linux live recovery USB, download exe, download dmg">
   <meta name="author" content="Botdigit">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://boot.botdigit.site/">
@@ -15,15 +15,15 @@
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://boot.botdigit.site/">
-  <meta property="og:title" content="BootForge — Universal Boot-Media Engineering Platform">
-  <meta property="og:description" content="Drop any ISO. Deep firmware analysis, zero bricking risk, multi-boot payloads, and instant QEMU virtual testing. Free & Open Source.">
+  <meta property="og:title" content="BootForge — Universal Boot-Media Engineering Platform | by Botdigit">
+  <meta property="og:description" content="Drop any ISO. Deep firmware analysis, zero bricking risk, multi-boot payloads, and instant QEMU virtual testing. Free & Open Source by Botdigit.">
   <meta property="og:image" content="https://boot.botdigit.site/assets/og-preview.png">
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:url" content="https://boot.botdigit.site/">
-  <meta name="twitter:title" content="BootForge — Universal Boot-Media Engineering Platform">
-  <meta name="twitter:description" content="Rufus + Ventoy + Live Recovery OS + Boot Intelligence in 100% pure Rust. Download for macOS, Linux, and Windows.">
+  <meta name="twitter:title" content="BootForge — Universal Boot-Media Engineering Platform | by Botdigit">
+  <meta name="twitter:description" content="Rufus + Ventoy + Live Recovery OS + Boot Intelligence in 100% pure Rust. Download EXE, DMG, and AppImage.">
   <meta name="twitter:image" content="https://boot.botdigit.site/assets/banner.png">
 
   <!-- Favicon -->
@@ -37,7 +37,7 @@
 
   <link rel="stylesheet" href="styles.css">
 
-  <!-- Schema.org SoftwareApplication & FAQ -->
+  <!-- Schema.org SoftwareApplication & FAQ with Botdigit backlink -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -52,13 +52,13 @@
           "price": "0",
           "priceCurrency": "USD"
         },
-        "description": "Universal boot-media engineering platform and recovery operating system written in Rust.",
+        "description": "Universal boot-media engineering platform and recovery operating system written in Rust by Botdigit.",
         "downloadUrl": "https://boot.botdigit.site/assets/BootForge-macOS.dmg",
         "softwareVersion": "0.1.0",
         "author": {
           "@type": "Organization",
           "name": "Botdigit",
-          "url": "https://botdigit.site"
+          "url": "https://botdigit.com"
         }
       },
       {
@@ -69,23 +69,23 @@
             "name": "How does BootForge compare to Rufus and Ventoy?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "BootForge combines the best of both worlds: you get multi-ISO drag-and-drop storage without reformatting (like Ventoy), deep customization including Windows 11 TPM bypass and unattended setup (like Rufus), cross-platform native support on macOS/Linux/Windows, automated headless QEMU boot validation, and a live Recovery OS."
+              "text": "BootForge combines the best of both worlds: multi-ISO drag-and-drop storage without reformatting (like Ventoy), deep customization including Windows 11 TPM bypass and unattended setup (like Rufus), native cross-platform support on macOS, Windows, and Linux, automated headless QEMU boot validation, and a live Recovery OS."
             }
           },
           {
             "@type": "Question",
-            "name": "Can BootForge run on macOS Apple Silicon (M1/M2/M3/M4)?",
+            "name": "Can BootForge run on macOS Apple Silicon (M1/M2/M3/M4) and Intel?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Yes! BootForge has a first-class macOS engine with native Apple Silicon (ARM64) and Intel (x86_64) binaries, leveraging macOS IOKit and DiskArbitration frameworks."
+              "text": "Yes! BootForge has a first-class macOS engine packaged as a Universal DMG with native Apple Silicon and Intel x86_64 binary code."
             }
           },
           {
             "@type": "Question",
-            "name": "How does BootForge prevent accidental drive formatting?",
+            "name": "Where can I download the Windows EXE and Linux binaries?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "BootForge incorporates a 3-layer safety transaction engine that inspects drive bus types, system mount flags, and NVMe internal storage flags, permanently locking out any OS or internal storage volumes from write operations."
+              "text": "You can download the Windows installer (.exe), Portable zip, Linux AppImage, Debian .deb, and macOS DMG directly from the BootForge Download Center on this page or from GitHub Releases."
             }
           }
         ]
@@ -97,6 +97,11 @@
 <body>
   <div class="grid-overlay"></div>
 
+  <!-- Top Announcement Bar with prominent botdigit.com backlink -->
+  <div class="top-announcement">
+    <span>⚡ BootForge is an open-source systems engineering platform by <a href="https://botdigit.com" target="_blank" rel="noopener"><strong>Botdigit (botdigit.com)</strong> ↗</a>. Explore our flagship software ecosystem!</span>
+  </div>
+
   <!-- Navigation -->
   <nav class="navbar">
     <div class="container nav-container">
@@ -106,11 +111,12 @@
         <span class="brand-tag">v0.1.0</span>
       </a>
       <ul class="nav-links">
-        <li><a href="#simulator" class="nav-link">Studio Simulator</a></li>
+        <li><a href="#simulator" class="nav-link">Simulator</a></li>
+        <li><a href="#architecture" class="nav-link">Architecture</a></li>
         <li><a href="#features" class="nav-link">Features</a></li>
-        <li><a href="#comparison" class="nav-link">Comparison</a></li>
+        <li><a href="#comparison" class="nav-link">Matrix</a></li>
         <li><a href="#downloads" class="nav-link">Downloads</a></li>
-        <li><a href="#faq" class="nav-link">FAQ</a></li>
+        <li><a href="https://botdigit.com" target="_blank" rel="noopener" class="nav-link">Botdigit.com ↗</a></li>
       </ul>
       <div class="nav-actions">
         <a href="https://github.com/botdigit-official/BootForge" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">
@@ -127,27 +133,27 @@
     <div class="container">
       <div class="hero-pill">
         <span class="pulse-dot"></span>
-        <span>Universal Boot-Media Engineering Platform & Standalone Recovery OS</span>
+        <span>An Open-Source Product by <a href="https://botdigit.com" target="_blank" rel="noopener" style="color:inherit; text-decoration:underline;">Botdigit</a></span>
       </div>
       <h1 class="hero-title">
         Forge Any Boot Media.<br><span class="glow">Zero Corruptions. Multi-OS.</span>
       </h1>
       <p class="hero-desc">
-        The memory-safe Rust platform combining the multi-boot freedom of Ventoy, the precision tuning of Rufus, automated headless QEMU testing, and an industrial-strength live Recovery OS.
+        The memory-safe Rust platform combining the multi-boot freedom of Ventoy, the fine-grained tuning of Rufus, automated headless QEMU testing, and a live disaster Recovery OS.
       </p>
 
       <div class="hero-actions">
-        <a href="assets/BootForge-macOS.dmg" class="btn btn-primary btn-lg" id="primaryHeroDlBtn">
+        <a href="#downloads" class="btn btn-primary btn-lg">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Download for macOS (DMG)
+          Download for Any Platform
         </a>
         <a href="#simulator" class="btn btn-secondary btn-lg">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
           Try Live Simulator
         </a>
-        <a href="https://github.com/botdigit-official/BootForge" target="_blank" rel="noopener" class="btn btn-cyan btn-lg">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-          Documentation
+        <a href="https://botdigit.com" target="_blank" rel="noopener" class="btn btn-cyan btn-lg">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          Visit Botdigit.com
         </a>
       </div>
 
@@ -158,10 +164,59 @@
       </div>
 
       <div class="showcase-banner-wrapper">
-        <img src="assets/banner.png" alt="BootForge Industrial Engineering Platform Banner" class="showcase-banner-img">
+        <img src="assets/banner.png" alt="BootForge Universal Platform Banner" class="showcase-banner-img">
       </div>
     </div>
   </header>
+
+  <!-- Visual Partition Architecture Diagram -->
+  <section class="container" id="architecture">
+    <div class="partition-diagram-wrap">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <span class="section-tag">Storage Blueprint</span>
+          <h3 style="font-family: var(--font-display); font-size: 1.5rem; font-weight: 800;">Universal Non-Destructive Storage Layout</h3>
+        </div>
+        <div style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--accent-cyan); background: rgba(0,240,255,0.08); padding: 6px 14px; border-radius: var(--radius-full); border: 1px solid var(--border-cyan);">
+          GPT Hybrid Partition Table + MBR Fallback
+        </div>
+      </div>
+
+      <p style="color: var(--text-muted); font-size: 0.95rem; margin-top: 0.75rem;">
+        Unlike Rufus or Etcher which overwrite the entire physical drive, BootForge engineers a clean hybrid partition map. Your boot media can safely hold everyday documents alongside multiple operating systems without conflict.
+      </p>
+
+      <div class="partition-bar">
+        <div class="part-segment efi">
+          <span>ESP / EFI</span>
+          <span style="font-size: 0.65rem; opacity: 0.8;">FAT32 • 100MB</span>
+        </div>
+        <div class="part-segment data">
+          <span>PAYLOAD STORAGE & PERSONAL DATA</span>
+          <span style="font-size: 0.65rem; opacity: 0.8;">ExFAT • Universal Mac / Win / Linux Compatible</span>
+        </div>
+        <div class="part-segment doctor">
+          <span>RECOVERY OS</span>
+          <span style="font-size: 0.65rem; opacity: 0.8;">Live Doctor • 850MB</span>
+        </div>
+      </div>
+
+      <div class="partition-legend">
+        <div class="legend-item">
+          <span class="legend-color" style="background: #0284c7;"></span>
+          <span><strong>ESP Partition:</strong> GRUB2, Limine & Ventoy UEFI Bootchains</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-color" style="background: #d97706;"></span>
+          <span><strong>Data Volume:</strong> Drag-and-drop multiple .iso / .img files directly</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-color" style="background: #059669;"></span>
+          <span><strong>Recovery Volume:</strong> Standalone Rust Rescue OS with disk diagnostic toolkit</span>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <!-- Interactive Studio Simulator -->
   <section class="simulator-section" id="simulator">
@@ -169,7 +224,7 @@
       <div class="section-header">
         <span class="section-tag">Interactive Simulation</span>
         <h2 class="section-title">The BootForge Studio Experience</h2>
-        <p class="section-desc">Experience how BootForge dynamically inspects ISO payloads, partitions storage with multi-boot stub injection, and guarantees bootability with virtualized verification.</p>
+        <p class="section-desc">Experience how BootForge dynamically inspects ISO payloads, crafts storage partitions, and guarantees bootability with headless virtual verification.</p>
       </div>
 
       <div class="simulator-card">
@@ -181,7 +236,7 @@
           </div>
           <div class="sim-title">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-orange)" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-            BootForge Engine v0.1.0 — Flash & Verification Suite
+            BootForge Engine v0.1.0 — Flash & Virtual QEMU Verification
           </div>
           <div style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--accent-cyan);">
             MEMORY-SAFE RUST CORE
@@ -247,7 +302,7 @@
             </div>
 
             <div class="log-feed" id="simLogFeed">
-              <div class="log-entry info"><span>[INIT] Storage subsystem initialized. Found 1 qualified removable media.</span></div>
+              <div class="log-entry info"><span>[INIT] Storage subsystem initialized. Qualified removable media detected.</span></div>
               <div class="log-entry info"><span>[READY] Target image selected. Press "Forge Bootable Media" to begin.</span></div>
             </div>
 
@@ -390,53 +445,239 @@
     </div>
   </section>
 
-  <!-- Downloads Section -->
-  <section class="downloads-section" id="downloads">
+  <!-- ALL DOWNLOADS CENTER: TABS FOR ALL PLATFORMS -->
+  <section class="download-center-section" id="downloads">
     <div class="container">
       <div class="section-header">
-        <span class="section-tag">Direct Downloads</span>
-        <h2 class="section-title">Get BootForge for Your Workstation</h2>
-        <p class="section-desc">Free and open source under the MIT License. Ready for professional field deployment.</p>
+        <span class="section-tag">Universal Download Center</span>
+        <h2 class="section-title">Get BootForge for Any Operating System</h2>
+        <p class="section-desc">Direct binaries, installers, package manager commands, and emergency live recovery images.</p>
       </div>
 
-      <div class="download-grid">
-        <!-- macOS -->
-        <div class="dl-card" id="dl-mac">
-          <div>
-            <div class="dl-platform-icon">🍏</div>
-            <h3>macOS Universal</h3>
-            <div class="dl-version">v0.1.0 • Apple Silicon & Intel (6.3 MB)</div>
-            <p>Native macOS installer packaged as a signed DMG with support for Ventura, Sonoma, and Sequoia.</p>
-          </div>
-          <a href="assets/BootForge-macOS.dmg" class="btn btn-primary" style="width: 100%;">
-            Download DMG (.dmg)
-          </a>
-        </div>
+      <!-- Platform Tabs -->
+      <div class="download-tabs">
+        <button class="tab-btn active" data-tab="tab-mac">🍏 macOS</button>
+        <button class="tab-btn" data-tab="tab-win">🪟 Windows (EXE)</button>
+        <button class="tab-btn" data-tab="tab-linux">🐧 Linux</button>
+        <button class="tab-btn" data-tab="tab-recovery">🩺 Live Doctor OS</button>
+        <button class="tab-btn" data-tab="tab-cli">⚡ CLI & Developers</button>
+      </div>
 
-        <!-- Linux -->
-        <div class="dl-card" id="dl-linux">
-          <div>
-            <div class="dl-platform-icon">🐧</div>
-            <h3>Linux (x86_64 / ARM64)</h3>
-            <div class="dl-version">v0.1.0 • AppImage & Deb</div>
-            <p>Runs seamlessly on Ubuntu, Debian, Fedora, Arch Linux, and Alpine with zero external dependencies.</p>
+      <!-- Tab Content: macOS -->
+      <div class="tab-content active" id="tab-mac">
+        <div class="platform-dl-grid">
+          <div class="platform-card featured">
+            <span class="platform-badge">RECOMMENDED</span>
+            <div>
+              <div class="platform-icon">🍏</div>
+              <h3>macOS Universal DMG</h3>
+              <div class="version-line">v0.1.0 • Apple Silicon (M1/M2/M3/M4) & Intel • 6.3 MB</div>
+              <p>Drag-and-drop macOS installer with native IOKit integration and APFS / GPT volume management.</p>
+            </div>
+            <div class="dl-link-group">
+              <a href="assets/BootForge-macOS.dmg" class="btn btn-primary" style="width: 100%;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Direct Download Universal DMG (.dmg)
+              </a>
+              <a href="https://github.com/botdigit-official/BootForge/releases/download/v0.1.0/BootForge-macOS.zip" target="_blank" rel="noopener" class="btn btn-secondary" style="width: 100%;">
+                Download Standalone ZIP (.zip)
+              </a>
+            </div>
           </div>
-          <a href="https://github.com/botdigit-official/BootForge/releases" target="_blank" rel="noopener" class="btn btn-secondary" style="width: 100%;">
-            Download AppImage / .deb
-          </a>
-        </div>
 
-        <!-- Windows -->
-        <div class="dl-card" id="dl-win">
-          <div>
-            <div class="dl-platform-icon">🪟</div>
-            <h3>Windows 10 / 11</h3>
-            <div class="dl-version">v0.1.0 • Portable & MSI</div>
-            <p>Single portable executable with elevated volume locking and native Windows VDS storage integration.</p>
+          <div class="platform-card">
+            <div>
+              <div class="platform-icon">🍺</div>
+              <h3>Homebrew Cask</h3>
+              <div class="version-line">macOS Terminal • Auto-Updates</div>
+              <p>Install and keep BootForge updated automatically via the Homebrew package manager.</p>
+            </div>
+            <div class="dl-link-group">
+              <div class="cmd-snippet">
+                <code>brew install --cask bootforge</code>
+                <button class="copy-mini-btn" data-copy-target="brewCmd">Copy</button>
+              </div>
+              <div id="brewCmd" style="display:none;">brew install --cask bootforge</div>
+              <div class="cmd-snippet">
+                <code>curl -fsSL https://boot.botdigit.site/install.sh | bash</code>
+                <button class="copy-mini-btn" data-copy-target="shCmd">Copy</button>
+              </div>
+              <div id="shCmd" style="display:none;">curl -fsSL https://boot.botdigit.site/install.sh | bash</div>
+            </div>
           </div>
-          <a href="https://github.com/botdigit-official/BootForge/releases" target="_blank" rel="noopener" class="btn btn-secondary" style="width: 100%;">
-            Download Windows (.exe)
-          </a>
+        </div>
+      </div>
+
+      <!-- Tab Content: Windows -->
+      <div class="tab-content" id="tab-win">
+        <div class="platform-dl-grid">
+          <div class="platform-card featured">
+            <span class="platform-badge">PRIMARY</span>
+            <div>
+              <div class="platform-icon">🪟</div>
+              <h3>Windows 64-bit Installer (.exe)</h3>
+              <div class="version-line">v0.1.0 • Windows 10 & 11 (x64) • Setup Wizard</div>
+              <p>Full desktop installer with VDS storage locking, driver integration, and UAC elevation hooks.</p>
+            </div>
+            <div class="dl-link-group">
+              <a href="https://github.com/botdigit-official/BootForge/releases/download/v0.1.0/BootForge-Setup-x64.exe" target="_blank" rel="noopener" class="btn btn-primary" style="width: 100%;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Download Windows Setup (.exe)
+              </a>
+              <a href="https://github.com/botdigit-official/BootForge/releases/download/v0.1.0/BootForge-v0.1.0-Windows.zip" target="_blank" rel="noopener" class="btn btn-secondary" style="width: 100%;">
+                Download Portable Standalone (.zip)
+              </a>
+            </div>
+          </div>
+
+          <div class="platform-card">
+            <div>
+              <div class="platform-icon">⚡</div>
+              <h3>Windows Package Managers</h3>
+              <div class="version-line">Winget & Chocolatey • 1-Click Install</div>
+              <p>Execute directly in Windows Terminal or PowerShell to deploy BootForge in seconds.</p>
+            </div>
+            <div class="dl-link-group">
+              <div class="cmd-snippet">
+                <code>winget install Botdigit.BootForge</code>
+                <button class="copy-mini-btn" data-copy-target="wingetCmd">Copy</button>
+              </div>
+              <div id="wingetCmd" style="display:none;">winget install Botdigit.BootForge</div>
+              <div class="cmd-snippet">
+                <code>choco install bootforge</code>
+                <button class="copy-mini-btn" data-copy-target="chocoCmd">Copy</button>
+              </div>
+              <div id="chocoCmd" style="display:none;">choco install bootforge</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content: Linux -->
+      <div class="tab-content" id="tab-linux">
+        <div class="platform-dl-grid">
+          <div class="platform-card featured">
+            <span class="platform-badge">UNIVERSAL</span>
+            <div>
+              <div class="platform-icon">🐧</div>
+              <h3>Linux AppImage & Deb</h3>
+              <div class="version-line">v0.1.0 • Ubuntu, Debian, Fedora, Arch • 64-bit</div>
+              <p>Self-contained AppImage with zero library dependencies, plus native Debian package.</p>
+            </div>
+            <div class="dl-link-group">
+              <a href="https://github.com/botdigit-official/BootForge/releases/download/v0.1.0/BootForge-v0.1.0-x86_64.AppImage" target="_blank" rel="noopener" class="btn btn-primary" style="width: 100%;">
+                Download Universal AppImage (.AppImage)
+              </a>
+              <a href="https://github.com/botdigit-official/BootForge/releases/download/v0.1.0/bootforge_0.1.0_amd64.deb" target="_blank" rel="noopener" class="btn btn-secondary" style="width: 100%;">
+                Download Debian / Ubuntu (.deb)
+              </a>
+            </div>
+          </div>
+
+          <div class="platform-card">
+            <div>
+              <div class="platform-icon">📦</div>
+              <h3>Arch Linux AUR & Tarball</h3>
+              <div class="version-line">Arch AUR • Alpine • Generic Tar.gz</div>
+              <p>Compile or install using the Arch User Repository or extract the pre-compiled binary tarball.</p>
+            </div>
+            <div class="dl-link-group">
+              <div class="cmd-snippet">
+                <code>yay -S bootforge-bin</code>
+                <button class="copy-mini-btn" data-copy-target="yayCmd">Copy</button>
+              </div>
+              <div id="yayCmd" style="display:none;">yay -S bootforge-bin</div>
+              <a href="https://github.com/botdigit-official/BootForge/releases/download/v0.1.0/bootforge-v0.1.0-linux-x86_64.tar.gz" target="_blank" rel="noopener" class="btn btn-secondary" style="width: 100%;">
+                Download Binary Tarball (.tar.gz)
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content: Live Recovery OS -->
+      <div class="tab-content" id="tab-recovery">
+        <div class="platform-dl-grid">
+          <div class="platform-card featured">
+            <span class="platform-badge">DISASTER RESCUE</span>
+            <div>
+              <div class="platform-icon">🩺</div>
+              <h3>BootForge Live Doctor ISO</h3>
+              <div class="version-line">v0.1.0 • Universal UEFI / BIOS Live ISO • 850 MB</div>
+              <p>A standalone, minimal Linux-based emergency rescue operating system bundled with BootForge, MemTest86+, TestDisk, GParted, and automated Windows BCD fixers.</p>
+            </div>
+            <div class="dl-link-group">
+              <a href="https://github.com/botdigit-official/BootForge/releases/download/v0.1.0/BootForge-Recovery-v0.1.0.iso" target="_blank" rel="noopener" class="btn btn-primary" style="width: 100%;">
+                Download Live Doctor ISO (.iso)
+              </a>
+              <p style="font-size: 0.8rem; color: var(--text-subtle); margin-top: 0.5rem;">
+                Tip: You can flash this ISO using BootForge or simply drop it onto any existing BootForge multi-boot USB.
+              </p>
+            </div>
+          </div>
+
+          <div class="platform-card">
+            <div>
+              <div class="platform-icon">🛠️</div>
+              <h3>Doctor Rescue Capabilities</h3>
+              <div class="version-line">Integrated Tools & Diagnostics</div>
+              <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem;">
+                <li>✓ Automatic Windows 10/11 BCD Store & EFI repair</li>
+                <li>✓ Hardware RAM health tester (MemTest engine)</li>
+                <li>✓ RAW disk image cloning with bad sector avoidance</li>
+                <li>✓ Deleted partition table reconstruction (TestDisk)</li>
+              </ul>
+            </div>
+            <a href="https://github.com/botdigit-official/BootForge/tree/main/docs/guides" target="_blank" rel="noopener" class="btn btn-secondary" style="width: 100%;">
+              Read Rescue Documentation
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content: CLI & Terminal -->
+      <div class="tab-content" id="tab-cli">
+        <div class="platform-dl-grid">
+          <div class="platform-card featured">
+            <span class="platform-badge">DEVELOPER API</span>
+            <div>
+              <div class="platform-icon">🦀</div>
+              <h3>Cargo Rust Engine</h3>
+              <div class="version-line">Rust crates.io • Cross-Platform CLI & REST Daemon</div>
+              <p>Build from source or run headless in automated server imaging pipelines and CI runners.</p>
+            </div>
+            <div class="dl-link-group">
+              <div class="cmd-snippet">
+                <code>cargo install bootforge-cli</code>
+                <button class="copy-mini-btn" data-copy-target="cargoCmd">Copy</button>
+              </div>
+              <div id="cargoCmd" style="display:none;">cargo install bootforge-cli</div>
+              <div class="cmd-snippet">
+                <code>bootforge serve --port 41020</code>
+                <button class="copy-mini-btn" data-copy-target="serveCmd">Copy</button>
+              </div>
+              <div id="serveCmd" style="display:none;">bootforge serve --port 41020</div>
+            </div>
+          </div>
+
+          <div class="platform-card">
+            <div>
+              <div class="platform-icon">💻</div>
+              <h3>Quick Shell Installers</h3>
+              <div class="version-line">Automated 1-Line Terminal Scripts</div>
+              <p>Direct download and installation scripts for macOS, Linux, and Windows PowerShell.</p>
+            </div>
+            <div class="dl-link-group">
+              <div class="cmd-snippet">
+                <code>curl -fsSL https://boot.botdigit.site/install.sh | bash</code>
+                <button class="copy-mini-btn" data-copy-target="curlSh">Copy</button>
+              </div>
+              <div id="curlSh" style="display:none;">curl -fsSL https://boot.botdigit.site/install.sh | bash</div>
+              <a href="https://github.com/botdigit-official/BootForge" target="_blank" rel="noopener" class="btn btn-secondary" style="width: 100%;">
+                View Source Code on GitHub
+              </a>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -490,53 +731,66 @@
     </div>
   </section>
 
-  <!-- Footer -->
+  <!-- Footer with prominent botdigit.com backlink showcase -->
   <footer>
     <div class="container">
       <div class="footer-grid">
         <div>
           <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1rem;">
-            <img src="assets/icon.png" alt="BootForge" style="width: 28px; height: 28px; border-radius: 6px;">
-            <strong style="color: var(--text-main); font-size: 1.15rem; font-family: var(--font-display);">Botdigit BootForge</strong>
+            <img src="assets/icon.png" alt="BootForge" style="width: 32px; height: 32px; border-radius: 8px;">
+            <strong style="color: var(--text-main); font-size: 1.2rem; font-family: var(--font-display);">Botdigit BootForge</strong>
           </div>
-          <p style="font-size: 0.9rem; line-height: 1.6; max-width: 320px; color: var(--text-muted);">
+          <p style="font-size: 0.9rem; line-height: 1.6; max-width: 340px; color: var(--text-muted);">
             Engineered by Botdigit. The universal boot-media engineering platform and recovery operating system for modern hardware.
           </p>
+
+          <!-- Highlight backlink card to botdigit.com -->
+          <div class="botdigit-callout">
+            <div style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-orange); font-weight: 700; margin-bottom: 0.35rem;">
+              Developed by Botdigit
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+              Discover our next-generation software suite, developer tools, and networking utilities at:
+            </p>
+            <a href="https://botdigit.com" target="_blank" rel="noopener">🌐 Visit Official Website: botdigit.com ↗</a>
+          </div>
         </div>
 
         <div class="footer-col">
           <h4>Product</h4>
           <ul>
             <li><a href="#simulator">Studio Simulator</a></li>
+            <li><a href="#architecture">Storage Layout</a></li>
             <li><a href="#features">Features</a></li>
             <li><a href="#comparison">Comparison Matrix</a></li>
-            <li><a href="#downloads">Downloads</a></li>
+            <li><a href="#downloads">Universal Downloads</a></li>
           </ul>
         </div>
 
         <div class="footer-col">
-          <h4>Resources</h4>
+          <h4>Botdigit Ecosystem</h4>
           <ul>
-            <li><a href="https://github.com/botdigit-official/BootForge" target="_blank" rel="noopener">GitHub Repository</a></li>
-            <li><a href="https://github.com/botdigit-official/BootForge/issues" target="_blank" rel="noopener">Issue Tracker</a></li>
+            <li><a href="https://botdigit.com" target="_blank" rel="noopener"><strong>Botdigit.com</strong> (Main Hub)</a></li>
             <li><a href="https://wifi.botdigit.site" target="_blank" rel="noopener">ZeroDrop Wi-Fi</a></li>
-            <li><a href="https://botdigit.site" target="_blank" rel="noopener">Botdigit Ecosystem</a></li>
+            <li><a href="https://botdigit.site" target="_blank" rel="noopener">Botdigit.site Portal</a></li>
+            <li><a href="https://github.com/botdigit-official" target="_blank" rel="noopener">GitHub Organization</a></li>
           </ul>
         </div>
 
         <div class="footer-col">
           <h4>Open Source</h4>
           <ul>
+            <li><a href="https://github.com/botdigit-official/BootForge" target="_blank" rel="noopener">GitHub Repository</a></li>
+            <li><a href="https://github.com/botdigit-official/BootForge/releases" target="_blank" rel="noopener">Releases & EXE Downloads</a></li>
+            <li><a href="https://github.com/botdigit-official/BootForge/issues" target="_blank" rel="noopener">Issue Tracker</a></li>
             <li><a href="https://github.com/botdigit-official/BootForge/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a></li>
-            <li><a href="https://github.com/botdigit-official/BootForge/releases" target="_blank" rel="noopener">Releases & Tags</a></li>
-            <li><a href="https://github.com/botdigit-official/BootForge/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">Contributing</a></li>
           </ul>
         </div>
       </div>
 
       <div class="footer-bottom">
-        <span>© 2026 Botdigit Inc. All rights reserved.</span>
-        <span>Built with Rust, Tauri 2, and Web Standards.</span>
+        <span>© 2026 <a href="https://botdigit.com" target="_blank" rel="noopener" style="color:inherit; text-decoration:underline;">Botdigit Inc.</a> All rights reserved.</span>
+        <span>Crafted with Rust, Tauri 2, and Web Standards.</span>
       </div>
     </div>
   </footer>
