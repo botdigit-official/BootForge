@@ -76,6 +76,10 @@ enum Commands {
     Ui {
         #[arg(short, long, default_value_t = 4242)]
         port: u16,
+
+        /// Do not automatically open the browser on launch
+        #[arg(long)]
+        no_open: bool,
     },
     /// List all physical and external storage devices detected on macOS
     Devices,
@@ -256,8 +260,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         }
-        Some(Commands::Ui { port }) => {
-            start_server(port, !cli.no_open).await?;
+        Some(Commands::Ui { port, no_open }) => {
+            start_server(port, !(cli.no_open || no_open)).await?;
         }
         None => {
             start_server(cli.port, !cli.no_open).await?;
