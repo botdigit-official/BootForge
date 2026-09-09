@@ -18,3 +18,7 @@ futures-util = "0.3"
 [dev-dependencies]
 pretty_assertions = { workspace = true }
 tempfile = { workspace = true }
+
+[[bin]]
+name = "write_mbr_core"
+path = "src/write_mbr_core.rs"

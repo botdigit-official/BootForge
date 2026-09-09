@@ -684,19 +684,34 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 6px;">
-              <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); font-family: var(--font-mono);">PARTITION SCHEME & FS</span>
+              <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); font-family: var(--font-mono);">TARGET PC & BOOT ARCHITECTURE</span>
               <div style="display: flex; gap: 6px;">
-                <select id="optPartitionScheme" class="btn-secondary" style="flex: 1;">
-                  <option value="MBR" selected>MBR (Universal BIOS + UEFI)</option>
-                  <option value="GPT">GPT (UEFI Only)</option>
+                <select id="optPartitionScheme" class="btn-secondary" style="flex: 1.4;">
+                  <option value="UNIVERSAL" selected>🌟 Universal: Old PC (BIOS) + Modern (UEFI)</option>
+                  <option value="LEGACY_BIOS">📟 Old PC / Laptop (ThinkPad R400 Legacy BIOS)</option>
+                  <option value="GPT">💻 Modern PC Only (Pure UEFI / GPT)</option>
                 </select>
-                <select id="optFilesystem" class="btn-secondary" style="flex: 1;">
+                <select id="optFilesystem" class="btn-secondary" style="flex: 0.8;">
                   <option value="ExFAT" selected>ExFAT (Mac+PC)</option>
                   <option value="FAT32">FAT32</option>
                   <option value="NTFS">NTFS</option>
                 </select>
               </div>
             </div>
+          </div>
+
+          <!-- ThinkPad / Pure Legacy BIOS 1-Click Banner -->
+          <div style="margin-top: 6px; display: flex; align-items: center; justify-content: space-between; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 8px; padding: 8px 12px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 14px;">⚡</span>
+              <div>
+                <div style="font-size: 11px; font-weight: 700; color: #E5E7EB;">ThinkPad R400 / Legacy BIOS Setup:</div>
+                <div style="font-size: 10px; color: var(--text-muted);">Writes Sector 0 MBR + Sectors 1–2047 GRUB stage 2 to eliminate blinking cursor</div>
+              </div>
+            </div>
+            <button class="btn-secondary" style="padding: 5px 12px; font-size: 11px; font-weight: 700; color: #34D399; border-color: rgba(52, 211, 153, 0.5); cursor: pointer;" onclick="injectLegacyBiosBootstrap()">
+              ⚡ 1-Click Legacy BIOS Setup
+            </button>
           </div>
 
           <div style="display: flex; gap: 12px; margin-top: 10px;">
@@ -823,9 +838,12 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
           </div>
         </div>
 
-        <div style="display: flex; gap: 12px;">
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
           <button class="btn-primary" onclick="repairBootloader()">
-            🛠️ REPAIR USB BOOTLOADER NOW
+            🛠️ REPAIR USB BOOTLOADER (UEFI + CONFIGS)
+          </button>
+          <button class="btn-secondary" onclick="injectLegacyBiosBootstrap()" style="border-color: #34D399; color: #34D399;">
+            ⚡ FIX THINKPAD R400 / LEGACY BIOS BLINKING CURSOR
           </button>
         </div>
 
@@ -1176,6 +1194,41 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
         alert(r.message);
       } catch (e) {
         logEl.textContent += `❌ Error: ${e.message}\n`;
+      }
+    }
+
+    async function injectLegacyBiosBootstrap() {
+      if (!selectedDevice) {
+        alert("Please select a target USB drive on the left.");
+        return;
+      }
+
+      const confirmed = confirm(
+        `⚡ ThinkPad R400 / Legacy BIOS Bootstrap Injector\n\n` +
+        `Target Drive: /dev/${selectedDevice}\n\n` +
+        `This will write GRUB Stage 1 to Sector 0 (MBR) and Stage 2 to Sectors 1-2047.\n` +
+        `This enables direct booting on ThinkPad R400 and older PCs without a blinking cursor.\n\n` +
+        `A macOS Terminal authorization window will open automatically.\n` +
+        `Enter your Mac password there to complete the write.\n\n` +
+        `Proceed?`
+      );
+
+      if (!confirmed) return;
+
+      try {
+        const res = await fetch('/api/inject-legacy-mbr', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ disk_id: selectedDevice })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert("⚡ " + data.message);
+        } else {
+          alert("❌ Failed: " + data.message);
+        }
+      } catch (e) {
+        alert("❌ Error communicating with BootForge engine: " + e.message);
       }
     }
 

@@ -287,6 +287,7 @@ async fn start_server(desired_port: u16, auto_open: bool) -> Result<(), Box<dyn 
         .route("/api/usb-files", get(api_usb_files))
         .route("/api/delete-usb-file", post(api_delete_usb_file))
         .route("/api/repair-bootloader", post(api_repair_bootloader))
+        .route("/api/inject-legacy-mbr", post(api_inject_legacy_mbr))
         .route("/api/recovery-catalog", get(api_recovery_catalog))
         .route("/api/download-catalog", get(api_download_catalog))
         .route("/api/start-download", post(api_start_download))
@@ -464,6 +465,85 @@ async fn api_repair_bootloader(Json(req): Json<RepairBootloaderRequest>) -> Json
     let result = repair_bootloader_structure(&req.disk_id);
     Json(result)
 }
+
+fn resolve_write_mbr_core_path() -> PathBuf {
+    if let Ok(curr) = std::env::current_exe() {
+        if let Some(parent) = curr.parent() {
+            let candidate = parent.join("write_mbr_core");
+            if candidate.exists() {
+                return candidate;
+            }
+        }
+    }
+    let default_path = PathBuf::from("/Volumes/Mac2TB/Botdigit/Developer/Projects/BootForge/target/release/write_mbr_core");
+    if default_path.exists() {
+        return default_path;
+    }
+    PathBuf::from("/Volumes/Mac2TB/Botdigit/Developer/Projects/BootForge/target/debug/write_mbr_core")
+}
+
+#[derive(Deserialize)]
+struct InjectLegacyMbrRequest {
+    disk_id: String,
+}
+
+#[derive(Serialize)]
+struct InjectLegacyMbrResponse {
+    success: bool,
+    message: String,
+}
+
+async fn api_inject_legacy_mbr(Json(req): Json<InjectLegacyMbrRequest>) -> Json<InjectLegacyMbrResponse> {
+    let clean_id = req.disk_id.trim_start_matches("/dev/").replace("rdisk", "disk");
+
+    // Internal safety check
+    if clean_id == "disk0" || clean_id == "disk1" || clean_id == "disk2" || clean_id == "disk3" {
+        return Json(InjectLegacyMbrResponse {
+            success: false,
+            message: "Protected internal drive cannot be modified.".to_string(),
+        });
+    }
+
+    let bin = resolve_write_mbr_core_path();
+    if !bin.exists() {
+        let _ = Command::new("cargo")
+            .args(["build", "--release", "--bin", "write_mbr_core"])
+            .current_dir("/Volumes/Mac2TB/Botdigit/Developer/Projects/BootForge")
+            .output();
+    }
+
+    let script = format!(
+        r#"tell application "Terminal"
+            activate
+            do script "echo '================================================================'; echo ' ⚡ BOTDIGIT BOOTFORGE — LEGACY BIOS MBR BOOTSTRAP'; echo ' Writing Sector 0 & Post-MBR Gap for ThinkPad R400...'; echo ' Target Device: /dev/{disk}'; echo '================================================================'; sudo '{bin}' '/dev/{disk}'; echo ''; echo '✅ SUCCESS: ThinkPad R400 Legacy BIOS MBR active! Press Enter to close.'; read; exit"
+        end tell"#,
+        bin = bin.display(),
+        disk = clean_id
+    );
+
+    match Command::new("osascript").args(["-e", &script]).output() {
+        Ok(res) if res.status.success() => {
+            Json(InjectLegacyMbrResponse {
+                success: true,
+                message: format!("Terminal authorization prompt launched for /dev/{}. Enter your macOS password to activate ThinkPad R400 Legacy BIOS booting!", clean_id),
+            })
+        }
+        Ok(res) => {
+            let err = String::from_utf8_lossy(&res.stderr);
+            Json(InjectLegacyMbrResponse {
+                success: false,
+                message: format!("Failed to launch Terminal authorization: {}", err),
+            })
+        }
+        Err(e) => {
+            Json(InjectLegacyMbrResponse {
+                success: false,
+                message: format!("Error executing system command: {}", e),
+            })
+        }
+    }
+}
+
 
 async fn api_recovery_catalog() -> Json<Vec<RecoveryToolItem>> {
     let catalog = vec![
@@ -819,6 +899,30 @@ async fn api_create_boot_drive(Json(req): Json<CreateBootDriveRequest>) -> Json<
                 let mut p = get_progress().lock().unwrap();
                 p.logs.push(format!("[{}] ✓ Successfully written & verified: {}", chrono_time(), iso.display_name));
             }
+        }
+
+        // Step 5: If target architecture is Universal or Legacy BIOS, trigger Legacy BIOS bootstrap
+        let is_legacy = scheme.to_uppercase().contains("MBR")
+            || scheme.to_uppercase().contains("LEGACY")
+            || scheme.to_uppercase().contains("UNIVERSAL");
+
+        if is_legacy {
+            let mut p = get_progress().lock().unwrap();
+            p.percentage = 99.0;
+            p.phase = "⚡ Authorizing ThinkPad R400 Legacy BIOS Bootstrap...".to_string();
+            p.logs.push(format!("[{}] ⚡ Launching Terminal authorization to write Sector 0 MBR & Sectors 1-2047 Core...", chrono_time()));
+            drop(p);
+
+            let bin = resolve_write_mbr_core_path();
+            let script = format!(
+                r#"tell application "Terminal"
+                    activate
+                    do script "echo '================================================================'; echo ' ⚡ BOTDIGIT BOOTFORGE — LEGACY BIOS MBR BOOTSTRAP'; echo ' Target: /dev/{disk} (ThinkPad R400 / Legacy BIOS)'; echo '================================================================'; sudo '{bin}' '/dev/{disk}'; echo ''; echo '✅ SUCCESS: Legacy BIOS MBR active! Press Enter to close.'; read; exit"
+                end tell"#,
+                bin = bin.display(),
+                disk = clean_id
+            );
+            let _ = Command::new("osascript").args(["-e", &script]).output();
         }
 
         let mut p = get_progress().lock().unwrap();

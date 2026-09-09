@@ -17,6 +17,10 @@ pub fn generate_grub_cfg(isos: &[IsoAnalysis], timeout_seconds: u32) -> String {
     out.push_str("insmod ntfs\n");
     out.push_str("insmod ext2\n");
     out.push_str("insmod all_video\n");
+    out.push_str("insmod font\n");
+    out.push_str("loadfont /bootforge/fonts/unicode.pf2\n");
+    out.push_str("loadfont /bootforge/fonts/unifont_named.pf2\n");
+    out.push_str("loadfont /bootforge/fonts/ascii.pf2\n");
     out.push_str("insmod gfxterm\n\n");
 
     out.push_str("# Theme settings\n");

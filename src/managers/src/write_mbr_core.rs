@@ -23,18 +23,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .args(["unmountDisk", "force", &clean_id])
         .status();
 
-    // 2. Read boot.img and core.img
-    let boot_img_path = "/Volumes/Mac2TB/Botdigit/Developer/Projects/BootForge/src/managers/assets/ventoy_core/boot/boot.img";
-    let core_img_path = "/tmp/core.img";
+    // 2. Load boot.img and core.img (embedded or from /tmp/)
+    static EMBEDDED_BOOT_IMG: &[u8] = include_bytes!("../assets/ventoy_core/boot/boot.img");
+    static EMBEDDED_CORE_XZ: &[u8] = include_bytes!("../assets/ventoy_core/boot/core.img.xz");
 
-    let mut boot_img = Vec::new();
-    File::open(boot_img_path)?.read_to_end(&mut boot_img)?;
+    let boot_img: Vec<u8> = if std::path::Path::new("/tmp/boot.img").exists() {
+        std::fs::read("/tmp/boot.img").unwrap_or_else(|_| EMBEDDED_BOOT_IMG.to_vec())
+    } else {
+        EMBEDDED_BOOT_IMG.to_vec()
+    };
 
-    let mut core_img = Vec::new();
-    File::open(core_img_path)?.read_to_end(&mut core_img)?;
+    let core_img: Vec<u8> = if std::path::Path::new("/tmp/core.img").exists() {
+        std::fs::read("/tmp/core.img").unwrap_or_else(|_| {
+            decompress_xz(EMBEDDED_CORE_XZ).unwrap_or_default()
+        })
+    } else {
+        decompress_xz(EMBEDDED_CORE_XZ).unwrap_or_default()
+    };
 
-    println!("   boot.img: {} bytes", boot_img.len());
-    println!("   core.img: {} bytes", core_img.len());
+    if boot_img.len() < 446 || core_img.is_empty() {
+        eprintln!("❌ Failed to load valid boot.img or core.img payload.");
+        std::process::exit(1);
+    }
+
+    println!("   boot.img payload: {} bytes", boot_img.len());
+    println!("   core.img payload: {} bytes", core_img.len());
 
     // 3. Open raw disk
     println!("2. Writing to {}...", raw_path);
@@ -73,4 +86,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("✅ MBR + Core.img successfully written! Ready for ThinkPad R400 Legacy BIOS boot.");
 
     Ok(())
+}
+
+fn decompress_xz(compressed: &[u8]) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    use std::io::Write;
+    use std::process::Stdio;
+
+    let mut child = Command::new("xzcat")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()?;
+
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin.write_all(compressed)?;
+    }
+
+    let output = child.wait_with_output()?;
+    if output.status.success() {
+        Ok(output.stdout)
+    } else {
+        Err("xzcat failed".into())
+    }
 }
