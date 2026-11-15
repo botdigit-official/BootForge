@@ -232,15 +232,19 @@ version = "0.1.0"
 dependencies = [
  "bootforge-core",
  "chrono",
+ "dirs",
  "futures-util",
+ "md-5",
  "pretty_assertions",
  "reqwest",
  "serde",
  "serde_json",
+ "sha2",
  "tempfile",
  "thiserror",
  "tokio",
  "tracing",
+ "uuid",
 ]
 
 [[package]]

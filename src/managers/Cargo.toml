@@ -14,7 +14,15 @@ tracing = { workspace = true }
 reqwest = { workspace = true }
 chrono = { workspace = true }
 futures-util = "0.3"
+uuid = { workspace = true }
+sha2 = { workspace = true }
+md-5 = { workspace = true }
+dirs = { workspace = true }
 
 [dev-dependencies]
 pretty_assertions = { workspace = true }
 tempfile = { workspace = true }
+
+[[bin]]
+name = "write_mbr_core"
+path = "src/write_mbr_core.rs"

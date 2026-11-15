@@ -164,6 +164,67 @@ pub struct IsoAnalysis {
     pub analyzed_at: DateTime<Utc>,
     /// Any warnings generated during analysis.
     pub warnings: Vec<String>,
+    /// Will this image boot on each class of computer, and how.
+    #[serde(default)]
+    pub device_guidance: Vec<TargetVerdict>,
+}
+
+// ── Target Device Guidance ────────────────────────────────────────
+
+/// A class of computer, grouped by how its firmware boots external media.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum DeviceClass {
+    /// 32-bit CPU, Legacy BIOS (Pentium 4/M, Atom N270 netbooks, ~2000–2008).
+    LegacyBios32,
+    /// 64-bit CPU, Legacy BIOS or UEFI with CSM (Core 2 era ThinkPads, desktops ~2006–2012).
+    LegacyBios64,
+    /// UEFI PC with Secure Boot off or switchable (most PCs 2012+).
+    UefiPc,
+    /// UEFI PC with Secure Boot enforced (Windows 11 era PCs, 2020+, no CSM).
+    UefiSecureBoot,
+    /// 64-bit CPU but 32-bit UEFI firmware (Bay Trail / Cherry Trail tablets and mini PCs).
+    Uefi32,
+    /// Intel Mac without T2 chip (2006–2017 models).
+    IntelMac,
+    /// Intel Mac with T2 security chip (2018–2020 models).
+    IntelMacT2,
+    /// Apple Silicon Mac (M1 and later).
+    AppleSilicon,
+    /// ARM64 UEFI machine (Snapdragon Windows laptops, ARM servers, Raspberry Pi with UEFI firmware).
+    Arm64Uefi,
+}
+
+/// How well an image fits a device class.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum BootVerdict {
+    /// Boots directly from the BootForge drive.
+    Works,
+    /// Boots after the listed steps (firmware settings, key enrollment, separate drive...).
+    WorksWithSteps,
+    /// Cannot boot on this class of hardware.
+    NotSupported,
+}
+
+impl std::fmt::Display for BootVerdict {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Works => write!(f, "Works"),
+            Self::WorksWithSteps => write!(f, "Works with steps"),
+            Self::NotSupported => write!(f, "Not supported"),
+        }
+    }
+}
+
+/// Guidance for one image on one device class.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TargetVerdict {
+    pub device: DeviceClass,
+    pub device_name: String,
+    pub verdict: BootVerdict,
+    /// One-line explanation.
+    pub summary: String,
+    /// Ordered steps the user follows on that machine.
+    pub steps: Vec<String>,
 }
 
 /// Disk image format.

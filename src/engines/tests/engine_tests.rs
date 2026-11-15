@@ -54,6 +54,7 @@ mod tests {
             supports_persistence: false,
             analyzed_at: Utc::now(),
             warnings: vec![],
+            device_guidance: vec![],
         }
     }
 
@@ -231,6 +232,7 @@ mod tests {
             supports_persistence: false,
             analyzed_at: Utc::now(),
             warnings: vec![],
+            device_guidance: vec![],
         };
 
         let cfg = generate_grub_cfg(&[iso], 10);

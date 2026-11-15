@@ -1,224 +1,66 @@
-//! Disk formatting, partition management and Universal Botdigit BootForge bootloader installer
-//! with Progressive Fallback Hierarchy (Graphical UI -> Framebuffer -> High-Contrast Text -> Safe Mode).
+//! Drive creation: writes the standard BootForge multi-boot layout and its configuration.
+//!
+//! How a BootForge drive boots (see [`crate::boot_layout`] for the on-disk layout):
+//!
+//! * The boot loader on the 32 MiB ESP (bundled `ventoy_core`, signed for Secure Boot)
+//!   scans the data partition at boot time and lists **every** ISO/WIM/VHD/IMG/EFI file
+//!   it finds, on Legacy BIOS and on UEFI. Nothing has to be registered per image.
+//! * BootForge adds its theme, `ventoy.json` options and the F6 "BootForge Tools" page
+//!   (`/ventoy/ventoy_grub.cfg`) on the data partition. It never edits the ESP's own
+//!   `grub.cfg` — replacing it is what breaks image scanning.
 
 use std::fs;
+use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
+
+/// F6 tools page shown inside the boot menu.
+pub const BOOTFORGE_TOOLS_CFG: &str = include_str!("../assets/bootforge/ventoy_grub.cfg");
+pub static UNIFONT_PF2: &[u8] = include_bytes!("../assets/fonts/unicode.pf2");
+pub static ASCII_PF2: &[u8] = include_bytes!("../assets/fonts/ascii.pf2");
+pub static UNIFONT_NAMED_PF2: &[u8] = include_bytes!("../assets/fonts/unifont_named.pf2");
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct FormatOptions {
     pub disk_id: String,
-    pub mode: String, // "fresh_multiboot", "add_isos", "raw_flash"
-    pub partition_scheme: String, // "GPT" or "MBR"
-    pub filesystem: String, // "ExFAT", "FAT32", "NTFS"
+    pub mode: String,             // "fresh_multiboot", "add_isos", "raw_flash"
+    pub partition_scheme: String, // always the standard MBR layout; kept for API compatibility
+    pub filesystem: String,       // always exFAT; kept for API compatibility
     pub volume_label: String,
-    pub theme_name: String, // "botdigit_emerald", "dark_slate", "cyber_cyan"
+    pub theme_name: String,
 }
 
-/// Install Universal Botdigit BootForge bootloader & EFI configuration with multi-tier fallback
-pub fn install_botdigit_boot_theme(mount_path: &Path, title: &str, label: &str) -> std::io::Result<()> {
-    // 0. Install actual EFI bootloader binaries
-    install_efi_binaries(mount_path)?;
+/// Normalise a volume label to something exFAT and every firmware accepts:
+/// up to 11 characters, A–Z 0–9 `_` `-`.
+pub fn sanitize_volume_label(label: &str) -> String {
+    let clean: String = label
+        .to_uppercase()
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || *c == '_' || *c == '-')
+        .take(11)
+        .collect();
+    if clean.is_empty() { "BOOTFORGE".to_string() } else { clean }
+}
 
-    let final_label = if label.is_empty() { "BOOTFORGE" } else { label };
-
-    // 1. Create native Botdigit BootForge engine directories
-    let bootforge_dir = mount_path.join("bootforge");
-    let bootforge_theme_dir = bootforge_dir.join("themes").join("botdigit_emerald");
-    let efi_dir = mount_path.join("EFI").join("BOOT");
-    
-    fs::create_dir_all(&bootforge_theme_dir)?;
-    fs::create_dir_all(&efi_dir)?;
-
-    // 2. Universal Progressive Fallback GRUB2 Configuration
-    let grub_cfg = format!(
-        r##"# ⚡ {title}
-# Universal Boot & Recovery Studio (Legacy BIOS + UEFI Progressive Fallback)
-
-set timeout=10
-set default=0
-
-# ── 1. FIRMWARE & ARCHITECTURE DETECTION ────────────────────────────
-if [ "$grub_platform" = "pc" ]; then
-    # Legacy BIOS PC (e.g. ThinkPad R400, Intel GM45 / Core 2 Duo)
-    set firmware_mode="Legacy BIOS (x86 MBR)"
-    insmod vbe
-    insmod vga
-    insmod biosdisk
-    # Progressive resolution hierarchy
-    set gfxmode=1024x768,800x600,640x480,auto
-else
-    # UEFI (x86_64, IA32, ARM64)
-    set firmware_mode="UEFI ($grub_cpu)"
-    insmod efi_gop
-    insmod efi_uga
-    set gfxmode=auto
-fi
-
-# Filesystem drivers
-insmod part_gpt
-insmod part_msdos
-insmod fat
-insmod exfat
-insmod ntfs
-insmod all_video
-insmod font
-
-# ── 2. PROGRESSIVE DISPLAY FALLBACK HIERARCHY ──────────────────────
-# Try Mode A: Graphical Terminal (if VBE / GOP supported by motherboard)
-if terminal_output --append gfxterm; then
-    set gfxpayload=keep
-    set theme=/ventoy/theme/theme.txt
-else
-    # Mode B/C: High-Contrast Emergency Console Safety Net
-    terminal_output console
-    set menu_color_normal=white/black
-    set menu_color_highlight=black/light-green
-fi
-
-# ── 3. MAIN MULTI-OS & RECOVERY BOOT MENU ───────────────────────────
-menuentry "🐧 Linux Mint 22.3 (Cinnamon 64-bit)" --class linux --class os {{
-    echo "⚡ Loading Linux Mint 22.3 from /images/linux/..."
-    echo "Firmware Mode: $firmware_mode"
-    search --no-floppy --set=isopart --label {final_label}
-    set root=$isopart
-    set isofile="/images/linux/linuxmint-22.3-cinnamon-64bit.iso"
-    loopback loop $isofile
-    linux (loop)/casper/vmlinuz boot=casper iso-scan/filename=$isofile quiet splash ---
-    initrd (loop)/casper/initrd
-}}
-
-menuentry "🐧 Ubuntu 24.04 LTS Desktop" --class ubuntu --class os {{
-    echo "⚡ Loading Ubuntu 24.04 LTS Desktop..."
-    search --no-floppy --set=isopart --label {final_label}
-    set root=$isopart
-    set isofile="/images/linux/ubuntu-24.04-desktop-amd64.iso"
-    loopback loop $isofile
-    linux (loop)/casper/vmlinuz boot=casper iso-scan/filename=$isofile quiet splash ---
-    initrd (loop)/casper/initrd
-}}
-
-menuentry "🪟 Windows 11 (24H2 Installer - TPM/SecureBoot Bypass)" --class windows --class os {{
-    echo "⚡ Initializing Windows 11 Installer environment..."
-    search --no-floppy --set=isopart --label {final_label}
-    set root=$isopart
-    set isofile="/images/windows/Win11_24H2_English_x64.iso"
-    loopback loop $isofile
-    chainloader (loop)/efi/boot/bootx64.efi
-}}
-
-menuentry "💽 Clonezilla Live (Disk Imaging & Backup)" --class clonezilla --class recovery {{
-    echo "⚡ Starting Clonezilla Live Backup & Recovery..."
-    search --no-floppy --set=isopart --label {final_label}
-    set root=$isopart
-    set isofile="/images/rescue/clonezilla-live-3.1.2-amd64.iso"
-    loopback loop $isofile
-    linux (loop)/live/vmlinuz boot=live findiso=$isofile quiet
-    initrd (loop)/live/initrd.img
-}}
-
-menuentry "🧠 MemTest86+ (Memory Diagnostics)" --class memtest --class recovery {{
-    echo "Launching Stand-Alone RAM Diagnostic Suite..."
-    search --no-floppy --set=isopart --label {final_label}
-    set root=$isopart
-    linux16 /bootforge/memtest.bin
-}}
-
-# ── 4. EMERGENCY SAFE MODE SUBMENU (NO GRAPHICS / TEXT ONLY) ────────
-submenu "🛡️ BotForge Safe Mode (Text Mode / Low-Res Fallback)" --class recovery {{
-    set menu_color_normal=light-gray/black
-    set menu_color_highlight=yellow/black
-    terminal_output console
-
-    menuentry "🐧 Linux Mint (nomodeset / Safe Graphics)" {{
-        echo "Launching Linux Mint in Safe VESA Mode..."
-        search --no-floppy --set=isopart --label {final_label}
-        set root=$isopart
-        set isofile="/images/linux/linuxmint-22.3-cinnamon-64bit.iso"
-        loopback loop $isofile
-        linux (loop)/casper/vmlinuz boot=casper iso-scan/filename=$isofile nomodeset text ---
-        initrd (loop)/casper/initrd
-    }}
-
-    menuentry "🐧 Ubuntu (Safe Graphics Mode)" {{
-        echo "Launching Ubuntu in nomodeset Mode..."
-        search --no-floppy --set=isopart --label {final_label}
-        set root=$isopart
-        set isofile="/images/linux/ubuntu-24.04-desktop-amd64.iso"
-        loopback loop $isofile
-        linux (loop)/casper/vmlinuz boot=casper iso-scan/filename=$isofile nomodeset text ---
-        initrd (loop)/casper/initrd
-    }}
-
-    menuentry "💽 Clonezilla (Safe Failsafe VGA)" {{
-        echo "Launching Clonezilla in Standard 80x25 VGA Mode..."
-        search --no-floppy --set=isopart --label {final_label}
-        set root=$isopart
-        set isofile="/images/rescue/clonezilla-live-3.1.2-amd64.iso"
-        loopback loop $isofile
-        linux (loop)/live/vmlinuz boot=live findiso=$isofile nomodeset
-        initrd (loop)/live/initrd.img
-    }}
-}}
-
-# ── 5. HARDWARE & FIRMWARE TELEMETRY DIAGNOSTICS ───────────────────
-menuentry "🔎 Hardware Telemetry & Firmware Diagnostics [Press D]" --hotkey d {{
-    echo "=========================================================="
-    echo " ⚡ BOTDIGIT BOOTFORGE SYSTEM TELEMETRY"
-    echo "=========================================================="
-    echo " Target Firmware:    $firmware_mode"
-    echo " CPU Architecture:   $grub_cpu"
-    echo " Platform Driver:    $grub_platform"
-    echo " Display Driver:     Auto Fallback Active"
-    echo " Target Partition:   /Volumes/BOTDIGIT"
-    echo " Universal Core:     Online & Verified"
-    echo "=========================================================="
-    echo ""
-    echo "Press Enter to return to main menu..."
-    read
-}}
-
-menuentry "🔄 Reboot System" {{
-    reboot
-}}
-
-menuentry "🛑 Power Off" {{
-    halt
-}}
-"##,
-        title = title
-    );
-
-    fs::write(bootforge_dir.join("grub.cfg"), &grub_cfg)?;
-    fs::write(efi_dir.join("grub.cfg"), &grub_cfg)?;
-
-    // 3. Botdigit Cyber Emerald Theme Specification (Responsive 1024x768 & 800x600 safe)
-    let theme_meta = format!(
-        r##"# ⚡ Botdigit BootForge Theme Specification
-name: "Botdigit Cyber Emerald"
-version: "0.1.0"
-author: "Botdigit"
-title-text: "⚡ {title}"
-title-font: "Unifont 20"
-title-color: "#10B981"
-desktop-color: "#07090E"
-highlight-color: "#06B6D4"
-"##,
-        title = title
-    );
-    fs::write(bootforge_theme_dir.join("theme.txt"), theme_meta)?;
-
-    // 4. Ventoy Universal Bootloader theme & JSON config with alias mapper
+/// Install BootForge's theme, boot options and F6 tools page onto a mounted data partition.
+///
+/// Safe to run again on an existing drive (used by the repair function): image files are
+/// never touched.
+pub fn install_botdigit_boot_theme(mount_path: &Path, title: &str, _label: &str) -> std::io::Result<()> {
     let ventoy_dir = mount_path.join("ventoy");
     let ventoy_theme_dir = ventoy_dir.join("theme");
-    fs::create_dir_all(&ventoy_theme_dir)?;
+    let vt_fonts = ventoy_theme_dir.join("fonts");
+    fs::create_dir_all(&vt_fonts)?;
+    fs::write(vt_fonts.join("unicode.pf2"), UNIFONT_PF2)?;
+    fs::write(vt_fonts.join("unifont_named.pf2"), UNIFONT_NAMED_PF2)?;
+    fs::write(vt_fonts.join("ascii.pf2"), ASCII_PF2)?;
 
     let ventoy_theme_txt = format!(
-        r##"# ⚡ Botdigit BootForge Theme (Responsive 1024x768 & Low-Res Safe)
-title-text: "⚡ {title}"
-title-font: "Unifont Regular 20"
+        r##"# Botdigit BootForge Theme (Responsive 1024x768 & Low-Res Safe)
+title-text: "{title}"
+title-font: "Unknown Regular 16"
 title-color: "#10B981"
-message-font: "Unifont Regular 14"
+message-font: "Unknown Regular 16"
 message-color: "#94A3B8"
 message-bg-color: "#07090E"
 desktop-color: "#07090E"
@@ -228,12 +70,12 @@ desktop-color: "#07090E"
   top = 18%
   width = 84%
   height = 64%
-  item_font = "Unifont Regular 16"
+  item_font = "Unknown Regular 16"
   item_color = "#94A3B8"
   selected_item_color = "#10B981"
-  item_height = 32
-  item_padding = 8
-  item_spacing = 6
+  item_height = 28
+  item_padding = 6
+  item_spacing = 4
 }}
 
 + progress_bar {{
@@ -251,403 +93,459 @@ desktop-color: "#07090E"
     );
     fs::write(ventoy_theme_dir.join("theme.txt"), ventoy_theme_txt)?;
 
-    let ventoy_json = serde_json::json!({
-        "theme": {
-            "file": "/ventoy/theme/theme.txt",
-            "display_mode": "GUI",
-            "ventoy_color": "#10B981",
-            "ventoy_left": "5%",
-            "ventoy_top": "90%"
-        },
-        "control": [
-            {
-                "VTOY_DEFAULT_SEARCH_ROOT": "/",
-                "VTOY_DEFAULT_IMAGE": "",
-                "VTOY_MENU_TIMEOUT": "10",
-                "VTOY_SECONDARY_BOOT_MENU": "1"
-            }
-        ],
-        "menu_alias": [
-            {
-                "image": "/images/linux/linuxmint-22.3-cinnamon-64bit.iso",
-                "alias": "⚡ 🐧 Linux Mint 22.3 (Cinnamon 64-bit)"
-            },
-            {
-                "image": "/images/linux/linuxmint-22-cinnamon-64bit.iso",
-                "alias": "⚡ 🐧 Linux Mint 22 (Cinnamon 64-bit)"
-            },
-            {
-                "image": "/images/linux/ubuntu-24.04-desktop-amd64.iso",
-                "alias": "⚡ 🐧 Ubuntu 24.04 LTS Desktop (64-bit)"
-            },
-            {
-                "image": "/images/windows/Win11_24H2_English_x64.iso",
-                "alias": "⚡ 🪟 Windows 11 24H2 Installer (UEFI/TPM Bypass)"
-            },
-            {
-                "image": "/images/rescue/clonezilla-live-3.1.2-amd64.iso",
-                "alias": "⚡ 💽 Clonezilla Live (Disk Imaging & Backup)"
-            }
-        ]
+    // Keep any options the user added by hand; only (re)set the keys BootForge owns.
+    let json_path = ventoy_dir.join("ventoy.json");
+    let mut cfg: serde_json::Value = fs::read_to_string(&json_path)
+        .ok()
+        .and_then(|t| serde_json::from_str(&t).ok())
+        .filter(|v: &serde_json::Value| v.is_object())
+        .unwrap_or_else(|| serde_json::json!({}));
+    cfg["theme"] = serde_json::json!({
+        "file": "/ventoy/theme/theme.txt",
+        // GUI on capable firmware; the loader falls back to text mode on its own.
+        "display_mode": "GUI",
+        "gfxmode": "1024x768",
+        "ventoy_color": "#10B981",
+        "ventoy_left": "5%",
+        "ventoy_top": "92%"
     });
-    fs::write(ventoy_dir.join("ventoy.json"), serde_json::to_string_pretty(&ventoy_json).unwrap())?;
+    if cfg.get("control").is_none() {
+        cfg["control"] = serde_json::json!([
+            // Lets Windows 11 Setup run on older PCs (no TPM 2.0 / Secure Boot / 4 GB RAM checks).
+            { "VTOY_WIN11_BYPASS_CHECK": "1" },
+            // Shows the Normal / grub2 / memdisk choice for images that need a different method.
+            { "VTOY_SECONDARY_BOOT_MENU": "1" }
+        ]);
+    }
+    fs::write(&json_path, serde_json::to_string_pretty(&cfg).unwrap_or_default())?;
 
-    // 5. Create clean categorized ISO directories
-    fs::create_dir_all(mount_path.join("images").join("windows"))?;
-    fs::create_dir_all(mount_path.join("images").join("linux"))?;
-    fs::create_dir_all(mount_path.join("images").join("rescue"))?;
+    fs::write(ventoy_dir.join("ventoy_grub.cfg"), BOOTFORGE_TOOLS_CFG)?;
 
+    // Suggested folders (images are found anywhere on the partition).
+    for sub in ["windows", "linux", "macos-tools", "rescue", "other"] {
+        fs::create_dir_all(mount_path.join("images").join(sub))?;
+    }
+    fs::create_dir_all(mount_path.join("bootforge").join("tools"))?;
+    fs::write(mount_path.join("README-BOOTFORGE.txt"), DRIVE_README.replace("{title}", title))?;
     Ok(())
 }
 
-/// Install EFI bootloader binaries (GRUB2 for UEFI) into the EFI System Partition.
-/// Tries bundled binaries first, then system GRUB, then falls back to a chainload stub.
-fn install_efi_binaries(mount_path: &Path) -> std::io::Result<()> {
-    let efi_boot_dir = mount_path.join("EFI").join("BOOT");
-    fs::create_dir_all(&efi_boot_dir)?;
+const DRIVE_README: &str = "{title}\r
+\r
+HOW TO USE THIS DRIVE\r
+1. Copy .iso / .wim / .vhd / .vhdx / .img files anywhere on this drive\r
+   (the images\\ folders are only suggestions). No other setup is needed.\r
+2. Plug the drive into the computer you want to start and power it on while\r
+   pressing its boot-menu key (F12 Dell/Lenovo, F9 HP, F8 ASUS, F11 MSI,\r
+   Esc/F12 Acer, Option/Alt on an Intel Mac).\r
+3. Choose the USB entry. Pick the image in the menu.\r
+   - UEFI entry   = modern PCs (2012+).  Legacy/USB-HDD entry = older PCs.\r
+   - Press F6 for BootForge Tools (system info, boot installed OS, memtest).\r
+4. First boot with Secure Boot ON: a blue 'Verification failed' screen appears\r
+   once. Choose Enroll key from disk > VTOYEFI > ENROLL_THIS_KEY_IN_MOKMANAGER.cer\r
+   > Continue > Yes > Reboot. Or switch Secure Boot off in firmware setup.\r
+\r
+Do not delete the 'ventoy' folder or the small VTOYEFI partition.\r
+";
 
-    // Check if we already have a real BOOTX64.EFI
-    let bootx64 = efi_boot_dir.join("BOOTX64.EFI");
-    if bootx64.exists() && fs::metadata(&bootx64)?.len() > 1024 {
-        // Already have a real bootloader binary
-        return Ok(());
+// ── Assets ────────────────────────────────────────────────────────
+
+/// Resolve the BootForge boot assets directory across various environments.
+pub fn resolve_bootforge_assets_dir() -> PathBuf {
+    if let Ok(dir) = std::env::var("BOOTFORGE_ASSETS_DIR") {
+        let p = PathBuf::from(dir);
+        if p.exists() {
+            return p;
+        }
     }
 
-    // 1. Try bundled pre-built GRUB binaries (embedded at compile time)
-    let bundled_ok = install_bundled_grub_binaries(&efi_boot_dir);
+    let is_assets = |p: &Path| p.join("ventoy_core/ventoy/ventoy.disk.img.xz").exists();
 
-    // 2. Try to find GRUB EFI binaries from system
-    let grub_efi_found = if !bundled_ok {
-        find_and_copy_grub_efi(&efi_boot_dir)
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(parent) = exe.parent() {
+            let candidates = [
+                parent.join("assets"),
+                parent.join("../Resources/assets"),
+                parent.join("../../assets"),
+                parent.join("../../src/managers/assets"),
+                parent.join("../../../src/managers/assets"),
+            ];
+            for c in &candidates {
+                if is_assets(c) {
+                    return c.clone();
+                }
+            }
+        }
+    }
+
+    // Compile-time location of this crate (works for `cargo run` / dev builds).
+    let crate_assets = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets");
+    if is_assets(&crate_assets) {
+        return crate_assets;
+    }
+
+    PathBuf::from("src/managers/assets")
+}
+
+/// Decompress an `.xz` file into memory using whatever decoder the system has.
+///
+/// Tries `xz` (Homebrew / system) first, then Python's built-in `lzma` module (present on
+/// macOS with the Command Line Tools and on every Linux). Absolute paths are tried as
+/// well because privileged helpers run with a minimal `PATH`.
+pub fn decompress_xz_file(path: &Path) -> Result<Vec<u8>, String> {
+    let xz_candidates = ["xz", "/opt/homebrew/bin/xz", "/usr/local/bin/xz", "/usr/bin/xz"];
+    for xz in xz_candidates {
+        if let Ok(out) = Command::new(xz).args(["-dc"]).arg(path).stderr(Stdio::null()).output() {
+            if out.status.success() && !out.stdout.is_empty() {
+                return Ok(out.stdout);
+            }
+        }
+    }
+    for py in ["python3", "/usr/bin/python3", "/opt/homebrew/bin/python3"] {
+        let script = "import lzma,sys;sys.stdout.buffer.write(lzma.open(sys.argv[1]).read())";
+        if let Ok(out) = Command::new(py).args(["-I", "-c", script]).arg(path).stderr(Stdio::null()).output() {
+            if out.status.success() && !out.stdout.is_empty() {
+                return Ok(out.stdout);
+            }
+        }
+    }
+    Err(format!(
+        "Could not decompress {}. Install xz (`brew install xz`) or the Xcode Command Line Tools.",
+        path.display()
+    ))
+}
+
+/// Environment variable that points the root helper at pre-unpacked payloads.
+///
+/// macOS blocks root processes started from the password dialog from reading files on
+/// external volumes (this project often lives on one). The unprivileged app therefore
+/// unpacks the payloads into a private temp folder and passes that folder along.
+pub const STAGED_DIR_ENV: &str = "BOOTFORGE_STAGED_DIR";
+
+/// Load the three boot payloads (boot.img, core.img, ESP image).
+pub fn load_boot_payloads(assets: &Path) -> Result<(Vec<u8>, Vec<u8>, Vec<u8>), String> {
+    if let Ok(staged) = std::env::var(STAGED_DIR_ENV) {
+        let staged = PathBuf::from(staged);
+        let read = |name: &str| fs::read(staged.join(name)).map_err(|e| format!("Cannot read staged {name}: {e}"));
+        return Ok((read("boot.img")?, read("core.img")?, read("esp.img")?));
+    }
+    let core = assets.join("ventoy_core");
+    let boot = fs::read(core.join("boot/boot.img"))
+        .map_err(|e| format!("Missing boot/boot.img in {}: {e}", core.display()))?;
+    let core_img = decompress_xz_file(&core.join("boot/core.img.xz"))?;
+    let esp = decompress_xz_file(&core.join("ventoy/ventoy.disk.img.xz"))?;
+    Ok((boot, core_img, esp))
+}
+
+/// Unpack the payloads into a new private (mode 0700) folder under the system temp dir.
+#[cfg(unix)]
+pub fn stage_payloads() -> Result<PathBuf, String> {
+    use std::os::unix::fs::DirBuilderExt;
+    let (boot, core, esp) = load_boot_payloads(&resolve_bootforge_assets_dir())?;
+    let dir = std::env::temp_dir().join(format!("bootforge-stage-{}", uuid::Uuid::new_v4()));
+    fs::DirBuilder::new().mode(0o700).create(&dir).map_err(|e| format!("Cannot create {}: {e}", dir.display()))?;
+    for (name, data) in [("boot.img", &boot), ("core.img", &core), ("esp.img", &esp)] {
+        fs::write(dir.join(name), data).map_err(|e| e.to_string())?;
+    }
+    Ok(dir)
+}
+
+// ── macOS ─────────────────────────────────────────────────────────
+
+/// Query physical disk size in bytes via `diskutil info` on macOS.
+#[cfg(target_os = "macos")]
+pub fn query_disk_size_bytes_macos(clean_id: &str) -> Result<u64, String> {
+    let output = Command::new("diskutil")
+        .args(["info", clean_id])
+        .output()
+        .map_err(|e| format!("Failed to query diskutil info: {}", e))?;
+
+    let text = String::from_utf8_lossy(&output.stdout);
+    for line in text.lines() {
+        if line.contains("Disk Size:") || line.contains("Total Size:") {
+            if let (Some(start), Some(end)) = (line.find('('), line.find(" Bytes)")) {
+                if let Ok(bytes) = line[start + 1..end].trim().replace(',', "").parse::<u64>() {
+                    return Ok(bytes);
+                }
+            }
+        }
+    }
+    Err(format!("Could not determine disk capacity for /dev/{}", clean_id))
+}
+
+#[cfg(target_os = "macos")]
+fn diskutil(args: &[&str]) -> std::io::Result<std::process::Output> {
+    Command::new("diskutil").args(args).output()
+}
+
+/// **Privileged step** (needs root): erase `disk_id` and write the complete standard layout,
+/// then create the exFAT data partition and mount it. Used by the `write_mbr_core --full` helper.
+#[cfg(target_os = "macos")]
+pub fn write_standard_drive_macos(disk_id: &str, label: &str) -> Result<String, String> {
+    use crate::boot_layout::*;
+    use std::fs::OpenOptions;
+
+    let clean_id = disk_id.trim_start_matches("/dev/").replace("rdisk", "disk");
+    crate::device::ensure_safe_write_target(&clean_id)?;
+    let label = sanitize_volume_label(label);
+
+    let (boot_img, core_img, esp_img) = load_boot_payloads(&resolve_bootforge_assets_dir())?;
+    let size = query_disk_size_bytes_macos(&clean_id)?;
+    let layout = plan_standard_layout(size / SECTOR_SIZE, 0)?;
+
+    let unmount = diskutil(&["unmountDisk", "force", &clean_id]).map_err(|e| e.to_string())?;
+    if !unmount.status.success() {
+        return Err(format!(
+            "Could not unmount /dev/{clean_id}: {}. Close any app using the drive and retry.",
+            String::from_utf8_lossy(&unmount.stderr).trim()
+        ));
+    }
+
+    let raw = format!("/dev/r{clean_id}");
+    {
+        let mut dev = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&raw)
+            .map_err(|e| format!("Cannot open {raw} for writing ({e}). Administrator rights are required."))?;
+        let payloads = BootPayloads { boot_img: &boot_img, core_img: &core_img, esp_img: &esp_img };
+        write_standard_layout(&mut dev, &layout, &payloads, new_disk_uuid())
+            .map_err(|e| format!("Writing boot structures to {raw} failed: {e}"))?;
+        let problems = verify_standard_layout(&mut dev, &layout).map_err(|e| e.to_string())?;
+        if !problems.is_empty() {
+            return Err(format!("Verification after write failed: {}", problems.join("; ")));
+        }
+        dev.flush().ok();
+    } // closing the whole-disk node makes macOS re-read the new partition table
+
+    // Wait for the kernel to publish the new partition 1, then format it.
+    let part1 = format!("{clean_id}s1");
+    let expected = layout.part1_sectors * SECTOR_SIZE;
+    let mut ready = false;
+    for _ in 0..40 {
+        let _ = diskutil(&["unmountDisk", "force", &clean_id]);
+        if let Ok(out) = diskutil(&["info", &part1]) {
+            let t = String::from_utf8_lossy(&out.stdout);
+            if t.contains(&format!("({expected} Bytes)")) {
+                ready = true;
+                break;
+            }
+        }
+        std::thread::sleep(std::time::Duration::from_millis(500));
+    }
+    if !ready {
+        return Err(format!(
+            "Boot structures were written, but macOS did not re-read the partition table of /dev/{clean_id}. \
+             Unplug and re-plug the drive, then run Format again."
+        ));
+    }
+
+    let newfs = Command::new("/sbin/newfs_exfat")
+        .args(["-v", &label, &format!("/dev/r{part1}")])
+        .output()
+        .map_err(|e| format!("newfs_exfat failed to start: {e}"))?;
+    if !newfs.status.success() {
+        return Err(format!("Creating the exFAT data partition failed: {}", String::from_utf8_lossy(&newfs.stderr)));
+    }
+    let _ = diskutil(&["mountDisk", &clean_id]);
+
+    Ok(format!(
+        "/dev/{clean_id}: MBR boot code + BIOS stage 2, partition 1 '{label}' exFAT ({:.1} GB), partition 2 VTOYEFI 32 MiB ESP",
+        expected as f64 / 1e9
+    ))
+}
+
+/// Path of the privileged helper binary (`write_mbr_core`), next to the running executable.
+pub fn resolve_disk_helper_path() -> PathBuf {
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            for name in ["write_mbr_core", "../Resources/write_mbr_core"] {
+                let c = dir.join(name);
+                if c.exists() {
+                    return c;
+                }
+            }
+        }
+    }
+    PathBuf::from("write_mbr_core")
+}
+
+fn shell_quote(s: &str) -> String {
+    format!("'{}'", s.replace('\'', "'\\''"))
+}
+
+/// Run a shell command as root through the standard macOS administrator password dialog.
+#[cfg(target_os = "macos")]
+pub fn run_as_admin_macos(shell_cmd: &str, prompt: &str) -> Result<String, String> {
+    let esc = |s: &str| s.replace('\\', "\\\\").replace('"', "\\\"");
+    let script = format!(
+        "do shell script \"{}\" with prompt \"{}\" with administrator privileges",
+        esc(shell_cmd),
+        esc(prompt)
+    );
+    let out = Command::new("osascript")
+        .args(["-e", &script])
+        .output()
+        .map_err(|e| format!("Could not request administrator rights: {e}"))?;
+    if out.status.success() {
+        Ok(String::from_utf8_lossy(&out.stdout).to_string())
     } else {
-        true
+        let err = String::from_utf8_lossy(&out.stderr).to_string();
+        if err.contains("-128") {
+            Err("Cancelled: the administrator password was not entered.".to_string())
+        } else {
+            Err(err.trim().to_string())
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn running_as_root() -> bool {
+    Command::new("id")
+        .arg("-u")
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim() == "0")
+        .unwrap_or(false)
+}
+
+/// Run the root disk helper through the macOS password dialog, after staging its payloads.
+#[cfg(target_os = "macos")]
+pub fn run_disk_helper_as_admin(helper_args: &[&str], prompt: &str) -> Result<String, String> {
+    let helper = resolve_disk_helper_path();
+    if !helper.exists() {
+        return Err(format!(
+            "Disk helper not found at {}. Build it with: cargo build --release --bin write_mbr_core",
+            helper.display()
+        ));
+    }
+    let staged = stage_payloads()?;
+    let mut cmd = format!("{STAGED_DIR_ENV}={} ", shell_quote(&staged.to_string_lossy()));
+    // Forward explicit overrides to the root helper (its environment is reset).
+    for var in ["BOOTFORGE_ASSETS_DIR", "BOOTFORGE_ALLOW_DISK_IMAGES"] {
+        if let Ok(v) = std::env::var(var) {
+            cmd.push_str(&format!("{var}={} ", shell_quote(&v)));
+        }
+    }
+    cmd.push_str(&shell_quote(&helper.to_string_lossy()));
+    for a in helper_args {
+        cmd.push(' ');
+        cmd.push_str(&shell_quote(a));
+    }
+    let result = run_as_admin_macos(&cmd, prompt);
+    let _ = fs::remove_dir_all(&staged);
+    result
+}
+
+/// Create a BootForge drive on macOS: erase, write the standard layout (Legacy BIOS + UEFI +
+/// Secure Boot), format the data partition and install BootForge's configuration.
+///
+/// Asks for the administrator password once through the native macOS dialog.
+#[cfg(target_os = "macos")]
+pub fn format_disk_macos(disk_id: &str, _scheme: &str, _filesystem: &str, label: &str) -> Result<String, String> {
+    let clean_id = disk_id.trim_start_matches("/dev/").replace("rdisk", "disk");
+    crate::device::ensure_safe_write_target(&clean_id)?;
+    let label = sanitize_volume_label(&label);
+
+    let summary = if running_as_root() {
+        write_standard_drive_macos(&clean_id, &label)?
+    } else {
+        run_disk_helper_as_admin(
+            &["--full", &format!("/dev/{clean_id}"), &label],
+            &format!("BootForge needs to erase /dev/{clean_id} and write boot code."),
+        )?
     };
 
-    if !grub_efi_found {
-        // 3. Create a minimal UEFI chainload stub that forwards to the data partition
-        create_efi_chainload_stub(&efi_boot_dir)?;
-    }
-
-    // Create bootforge grub modules directories for BIOS/UEFI boot
-    let grub_modules_dir = mount_path.join("bootforge").join("grub").join("x86_64-efi");
-    let _ = fs::create_dir_all(&grub_modules_dir);
-    let bios_grub_modules = mount_path.join("bootforge").join("grub").join("i386-pc");
-    let _ = fs::create_dir_all(&bios_grub_modules);
-
-    // Copy bundled GRUB modules if available
-    install_bundled_grub_modules(&grub_modules_dir, &bios_grub_modules);
-
-    Ok(())
-}
-
-/// Install bundled pre-built GRUB EFI binaries that were downloaded at build time.
-fn install_bundled_grub_binaries(dest_dir: &Path) -> bool {
-    // The build.rs script downloads binaries to OUT_DIR/bootloader_assets/
-    // At runtime, we check common embedded paths
-    let bundled_paths = [
-        // Relative to the executable (for cargo install)
-        "bootloader_assets/efi/BOOTX64.EFI",
-        "bootloader_assets/efi/grubx64.efi",
-    ];
-
-    // Try to find the bundled assets relative to the current executable
-    if let Ok(exe_path) = std::env::current_exe() {
-        if let Some(exe_dir) = exe_path.parent() {
-            for rel_path in &bundled_paths {
-                let src = exe_dir.join(rel_path);
-                if src.exists() {
-                    let _ = fs::copy(&src, dest_dir.join("BOOTX64.EFI"));
-                    let _ = fs::copy(&src, dest_dir.join("grubx64.efi"));
-                    return true;
-                }
-            }
+    let mount = PathBuf::from(format!("/Volumes/{label}"));
+    for _ in 0..20 {
+        if mount.exists() {
+            break;
         }
+        std::thread::sleep(std::time::Duration::from_millis(500));
     }
-
-    // Try to find in the build output directory (for development builds)
-    if let Ok(out_dir) = std::env::var("OUT_DIR") {
-        let build_assets = PathBuf::from(&out_dir).join("bootloader_assets").join("efi");
-        let bootx64 = build_assets.join("BOOTX64.EFI");
-        if bootx64.exists() && fs::metadata(&bootx64).map(|m| m.len() > 1024).unwrap_or(false) {
-            let _ = fs::copy(&bootx64, dest_dir.join("BOOTX64.EFI"));
-            let grubx64 = build_assets.join("grubx64.efi");
-            if grubx64.exists() {
-                let _ = fs::copy(&grubx64, dest_dir.join("grubx64.efi"));
-            } else {
-                let _ = fs::copy(&bootx64, dest_dir.join("grubx64.efi"));
-            }
-            return true;
-        }
+    if !mount.exists() {
+        let _ = diskutil(&["mountDisk", &clean_id]);
     }
-
-    false
-}
-
-/// Copy bundled GRUB modules to the target mount point.
-fn install_bundled_grub_modules(uefi_modules_dir: &Path, bios_modules_dir: &Path) {
-    if let Ok(out_dir) = std::env::var("OUT_DIR") {
-        let bundled_modules = PathBuf::from(&out_dir).join("bootloader_assets").join("modules");
-
-        // Copy x86_64-efi modules
-        let src_uefi = bundled_modules.join("x86_64-efi");
-        if src_uefi.exists() {
-            let _ = copy_dir_recursive(&src_uefi, uefi_modules_dir);
-        }
-
-        // Copy i386-pc modules (for BIOS boot)
-        let src_bios = bundled_modules.join("i386-pc");
-        if src_bios.exists() {
-            let _ = copy_dir_recursive(&src_bios, bios_modules_dir);
-        }
+    if !mount.exists() {
+        return Err(format!("Drive was written but /Volumes/{label} did not mount. Re-plug the drive."));
     }
-}
+    install_botdigit_boot_theme(&mount, "Botdigit BootForge", &label)
+        .map_err(|e| format!("Drive was written but configuration could not be installed: {e}"))?;
 
-/// Copy a directory recursively.
-fn copy_dir_recursive(src: &Path, dest: &Path) -> std::io::Result<()> {
-    fs::create_dir_all(dest)?;
-    for entry in fs::read_dir(src)? {
-        let entry = entry?;
-        let path = entry.path();
-        let dest_path = dest.join(entry.file_name());
-        if path.is_dir() {
-            copy_dir_recursive(&path, &dest_path)?;
-        } else {
-            fs::copy(&path, &dest_path)?;
-        }
-    }
-    Ok(())
-}
-
-/// Attempt to find and copy GRUB2 EFI binaries from the system.
-fn find_and_copy_grub_efi(dest_dir: &Path) -> bool {
-    // Common locations for GRUB EFI binaries
-    let grub_paths = [
-        // macOS Homebrew
-        "/opt/homebrew/Cellar/grub/" ,
-        "/usr/local/Cellar/grub/",
-        // Linux
-        "/usr/lib/grub/",
-        "/usr/share/grub/",
-        "/boot/grub/",
-    ];
-
-    // Try to find grubx64.efi
-    for base in &grub_paths {
-        let base_path = Path::new(base);
-        if base_path.exists() {
-            // Walk the directory to find .efi files
-            if let Ok(entries) = fs::read_dir(base_path) {
-                for entry in entries.flatten() {
-                    let path = entry.path();
-                    if let Some(name) = path.file_name() {
-                        let name_str = name.to_string_lossy();
-                        if name_str.contains("grub") && name_str.ends_with(".efi") {
-                            let _ = fs::copy(&path, dest_dir.join("BOOTX64.EFI"));
-                            let _ = fs::copy(&path, dest_dir.join("grubx64.efi"));
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    false
-}
-
-/// Create a minimal UEFI chainload stub for systems without GRUB installed.
-/// This creates a small EFI application that chains to the next bootloader.
-fn create_efi_chainload_stub(efi_boot_dir: &Path) -> std::io::Result<()> {
-    // Create a minimal GRUB configuration that will be used by the EFI stub
-    let grub_forwarder = r#"# BootForge EFI Forwarder Stub
-# This file is loaded by the UEFI firmware when no other bootloader is found
-set timeout=3
-set default=0
-
-# Load basic modules
-insmod part_gpt
-insmod part_msdos
-insmod fat
-insmod exfat
-insmod ntfs
-insmod all_video
-
-# Try to find and load the main BootForge configuration
-search --no-floppy --set=boot_root --label BOOTFORGE
-if [ -n "$boot_root" ]; then
-    set root=$boot_root
-    if [ -f /bootforge/grub.cfg ]; then
-        configfile /bootforge/grub.cfg
-    fi
-fi
-
-# Fallback menu if nothing else works
-menuentry "BootForge Recovery Mode (Safe Graphics)" {
-    search --no-floppy --set=root --label BOOTFORGE
-    linux /bootforge/vmlinuz nomodeset text
-    initrd /bootforge/initramfs.img
-}
-
-menuentry "Reboot" {
-    reboot
-}
-"#;
-
-    // Write the forwarder grub.cfg
-    fs::write(efi_boot_dir.join("grub.cfg"), grub_forwarder)?;
-
-    // Create a note about EFI binary installation
-    let readme = r#"# BootForge EFI Boot Partition
-
-This partition should contain EFI bootloader binaries.
-
-To install a proper UEFI bootloader:
-
-1. Install GRUB2 for UEFI:
-   - macOS: brew install grub
-   - Linux: sudo apt install grub-efi-amd64-bin
-
-2. The binaries will be automatically detected and installed
-   on the next format/repair operation.
-
-Alternatively, you can manually copy BOOTX64.EFI to this directory.
-"#;
-    fs::write(efi_boot_dir.join("README.txt"), readme)?;
-
-    Ok(())
-}
-
-/// Format a disk on macOS using `diskutil` with industrial-grade multi-boot layout
-#[cfg(target_os = "macos")]
-pub fn format_disk_macos(
-    disk_id: &str,
-    _scheme: &str,
-    _filesystem: &str,
-    label: &str,
-) -> Result<String, String> {
-    let clean_id = disk_id.trim_start_matches("/dev/");
-    
-    // Safety check: protect internal disks
-    if clean_id == "disk0" || clean_id == "disk1" || clean_id == "disk2" || clean_id == "disk3" {
-        return Err("Protected internal drive cannot be formatted.".to_string());
-    }
-
-    let final_label = if label.is_empty() { "BOTDIGIT" } else { label };
-
-    // Unmount any active volumes on the disk before partitioning
-    let _ = Command::new("diskutil")
-        .args(["unmountDisk", "force", clean_id])
-        .output();
-
-    // 1. Partition disk: Partition 1 = ExFAT Main Data, Partition 2 = 100M FAT16 ESP (VTOYEFI)
-    let partition_output = Command::new("diskutil")
-        .args([
-            "partitionDisk",
-            clean_id,
-            "MBR",
-            "ExFAT",
-            final_label,
-            "R",
-            "MS-DOS FAT16",
-            "VTOYEFI",
-            "100M",
-        ])
-        .output()
-        .map_err(|e| e.to_string())?;
-
-    if !partition_output.status.success() {
-        let err_text = String::from_utf8_lossy(&partition_output.stderr).to_string();
-        return Err(if err_text.is_empty() { "Partitioning failed".to_string() } else { err_text });
-    }
-
-    let out_text = String::from_utf8_lossy(&partition_output.stdout).to_string();
-
-    // 2. Extract and mount template EFI disk image
-    let _ = Command::new("sh")
-        .args([
-            "-c",
-            "xz -dc src/managers/assets/ventoy_core/ventoy/ventoy.disk.img.xz > /tmp/ventoy.disk.img 2>/dev/null || xz -dc ../managers/assets/ventoy_core/ventoy/ventoy.disk.img.xz > /tmp/ventoy.disk.img 2>/dev/null",
-        ])
-        .output();
-
-    if Path::new("/tmp/ventoy.disk.img").exists() {
-        let attach_output = Command::new("hdiutil")
-            .args(["attach", "-nobrowse", "/tmp/ventoy.disk.img"])
-            .output();
-
-        if let Ok(att) = attach_output {
-            let attach_stdout = String::from_utf8_lossy(&att.stdout);
-            let mut mounted_src = None;
-            for line in attach_stdout.lines() {
-                if let Some(pos) = line.find("/Volumes/") {
-                    mounted_src = Some(line[pos..].trim().to_string());
-                }
-            }
-
-            let src_dir = mounted_src.unwrap_or_else(|| "/Volumes/VTOYEFI 1".to_string());
-            let target_vtoy = PathBuf::from("/Volumes/VTOYEFI");
-
-            if target_vtoy.exists() && Path::new(&src_dir).exists() {
-                // Copy EFI binaries and grub modules recursively
-                let _ = Command::new("sh")
-                    .args(["-c", &format!("cp -R \"{}\"/* /Volumes/VTOYEFI/ 2>/dev/null || true", src_dir)])
-                    .output();
-            }
-
-            let _ = Command::new("hdiutil")
-                .args(["detach", &src_dir])
-                .output();
-        }
-    }
-
-    // 3. Write Auto-Search Forwarder Stub to /Volumes/VTOYEFI/grub/grub.cfg
-    let vtoy_mount = PathBuf::from("/Volumes/VTOYEFI");
-    if vtoy_mount.exists() {
-        let grub_dir = vtoy_mount.join("grub");
-        let _ = fs::create_dir_all(&grub_dir);
-        let efi_boot_dir = vtoy_mount.join("EFI").join("BOOT");
-        let _ = fs::create_dir_all(&efi_boot_dir);
-
-        let stub_cfg = format!(
-            r##"# BootForge Universal Auto-Search Forwarder
-set timeout=0
-set default=0
-
-# Search for the main BootForge data partition by label
-search --no-floppy --set=boot_root --label {final_label}
-
-if [ -n "$boot_root" ]; then
-    set root=$boot_root
-    if [ -f /bootforge/grub.cfg ]; then
-        configfile /bootforge/grub.cfg
-    elif [ -f /EFI/BOOT/grub.cfg ]; then
-        configfile /EFI/BOOT/grub.cfg
-    fi
-fi
-"##,
-            final_label = final_label
-        );
-
-        let _ = fs::write(grub_dir.join("grub.cfg"), &stub_cfg);
-        let _ = fs::write(efi_boot_dir.join("grub.cfg"), &stub_cfg);
-    }
-
-    // 4. Install Full Botdigit Cyber Emerald Theme & Recovery Menus to /Volumes/<LABEL>
-    let main_mount = PathBuf::from(format!("/Volumes/{}", final_label));
-    if main_mount.exists() {
-        let _ = install_botdigit_boot_theme(&main_mount, "Botdigit BootForge Universal Multi-Boot Studio", final_label);
-    }
-
-    Ok(out_text)
+    Ok(format!("{}\nReady: copy image files to /Volumes/{label}/", summary.trim()))
 }
 
 #[cfg(not(target_os = "macos"))]
-pub fn format_disk_macos(
-    _disk_id: &str,
-    _scheme: &str,
-    _filesystem: &str,
-    _label: &str,
-) -> Result<String, String> {
-    Ok("Mock formatted on non-macOS".to_string())
+pub fn format_disk_macos(disk_id: &str, _scheme: &str, _filesystem: &str, _label: &str) -> Result<String, String> {
+    Err(format!(
+        "Creating drives is implemented for macOS in this build. On Linux, run the bundled \
+         ventoy_core/Ventoy2Disk.sh -i {disk_id}, then copy BootForge's ventoy/ folder onto the drive."
+    ))
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn labels_are_firmware_safe() {
+        assert_eq!(sanitize_volume_label("My Boot Drive!"), "MYBOOTDRIVE");
+        assert_eq!(sanitize_volume_label(""), "BOOTFORGE");
+        assert_eq!(sanitize_volume_label("botdigit"), "BOTDIGIT");
+        assert_eq!(sanitize_volume_label("a-very-long-label-name").len(), 11);
+    }
+
+    #[test]
+    fn shell_quote_escapes_single_quotes() {
+        assert_eq!(shell_quote("/Volumes/My Disk/it's"), "'/Volumes/My Disk/it'\\''s'");
+    }
+
+    #[test]
+    fn theme_install_preserves_user_options_and_images() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        fs::create_dir_all(root.join("ventoy")).unwrap();
+        fs::write(root.join("ventoy/ventoy.json"), r#"{"menu_alias":[{"image":"/a.iso","alias":"A"}]}"#).unwrap();
+        fs::create_dir_all(root.join("images/linux")).unwrap();
+        fs::write(root.join("images/linux/a.iso"), b"iso").unwrap();
+
+        install_botdigit_boot_theme(root, "Test", "T").unwrap();
+
+        let cfg: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(root.join("ventoy/ventoy.json")).unwrap()).unwrap();
+        assert_eq!(cfg["menu_alias"][0]["alias"], "A");
+        assert_eq!(cfg["theme"]["file"], "/ventoy/theme/theme.txt");
+        assert!(root.join("ventoy/ventoy_grub.cfg").exists());
+        assert_eq!(fs::read(root.join("images/linux/a.iso")).unwrap(), b"iso");
+        // Must never write a boot loader config that would shadow the scanner.
+        assert!(!root.join("EFI").exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn staged_payloads_are_private_and_complete() {
+        use std::os::unix::fs::PermissionsExt;
+        // Only meaningful where the assets and an xz decoder are available.
+        let Ok(dir) = stage_payloads() else {
+            eprintln!("skipping: assets or xz decoder not available");
+            return;
+        };
+        let mode = fs::metadata(&dir).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o700, "staging folder must not be readable by other users");
+        assert_eq!(fs::metadata(dir.join("boot.img")).unwrap().len(), 512);
+        assert_eq!(fs::metadata(dir.join("esp.img")).unwrap().len(), crate::boot_layout::ESP_SECTORS * 512);
+        assert!(fs::metadata(dir.join("core.img")).unwrap().len() > 0);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn bundled_payloads_have_expected_sizes() {
+        let assets = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets");
+        let Ok((boot, core, esp)) = load_boot_payloads(&assets) else {
+            eprintln!("skipping: no xz decoder available");
+            return;
+        };
+        assert_eq!(boot.len(), 512);
+        assert!(!core.is_empty() && core.len() <= crate::boot_layout::CORE_MAX_BYTES);
+        assert_eq!(esp.len() as u64, crate::boot_layout::ESP_SECTORS * 512);
+    }
+}

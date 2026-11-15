@@ -13,13 +13,22 @@ def install_bootforge_core(disk_dev, label="BOTDIGIT"):
     
     print(f"⚡ Initializing Botdigit Universal Boot Core on {raw_disk} ({label})...")
     
-    assets_dir = "/Volumes/Mac2TB/Botdigit/Developer/Projects/BootForge/src/managers/assets/ventoy_core"
+    # Dynamic assets directory discovery
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    candidates = [
+        os.path.join(script_dir, "../assets"),
+        os.path.join(script_dir, "assets"),
+        "/Volumes/Mac2TB/Botdigit/Developer/Projects/BootForge/src/managers/assets",
+    ]
+    assets_base = next((c for c in candidates if os.path.exists(os.path.join(c, "ventoy_core/boot/boot.img"))), candidates[-1])
+    assets_dir = os.path.join(assets_base, "ventoy_core")
     boot_img_path = os.path.join(assets_dir, "boot/boot.img")
     core_img_xz_path = os.path.join(assets_dir, "boot/core.img.xz")
     esp_img_xz_path = os.path.join(assets_dir, "ventoy/ventoy.disk.img.xz")
+    bootforge_cfg_path = os.path.join(assets_base, "bootforge/bootforge_os.cfg")
     
     if not os.path.exists(boot_img_path) or not os.path.exists(core_img_xz_path) or not os.path.exists(esp_img_xz_path):
-        raise FileNotFoundError("Missing core boot assets in ventoy_core directory.")
+        raise FileNotFoundError(f"Missing core boot assets in {assets_dir}.")
 
     # 1. Unmount target disk
     print("1. Unmounting target disk...")
@@ -208,8 +217,75 @@ desktop-color: "#07090E"
                 }
             ]
         }
-        with open(os.path.join(ventoy_dir, "ventoy.json"), "w") as jf:
-            json.dump(vjson, jf, indent=2)
+        # Install BootForge Boot OS master configs
+        bootforge_dir = os.path.join(mount_point, "bootforge")
+        os.makedirs(bootforge_dir, exist_ok=True)
+        efi_dir = os.path.join(mount_point, "EFI/BOOT")
+        os.makedirs(efi_dir, exist_ok=True)
+
+        if os.path.exists(bootforge_cfg_path):
+            shutil.copy(bootforge_cfg_path, os.path.join(bootforge_dir, "bootforge_os.cfg"))
+            shutil.copy(bootforge_cfg_path, os.path.join(bootforge_dir, "grub.cfg"))
+            shutil.copy(bootforge_cfg_path, os.path.join(efi_dir, "grub.cfg"))
+
+        # Mount Partition 2 (VTOYEFI) and install Master Forwarder
+        subprocess.run(["diskutil", "mount", f"{clean_id}s2"], check=False)
+        vtoy_mount = "/Volumes/VTOYEFI"
+        if os.path.exists(vtoy_mount):
+            vtoy_grub = os.path.join(vtoy_mount, "grub")
+            os.makedirs(vtoy_grub, exist_ok=True)
+            vtoy_efi = os.path.join(vtoy_mount, "EFI/BOOT")
+            os.makedirs(vtoy_efi, exist_ok=True)
+
+            forwarder_cfg = f"""# ⚡ Botdigit BootForge Master Bootloader
+set timeout=5
+set default=0
+
+search --no-floppy --set=boot_root --label {label}
+
+if [ -n "$boot_root" ]; then
+    set root=$boot_root
+    if [ -f /bootforge/bootforge_os.cfg ]; then
+        configfile /bootforge/bootforge_os.cfg
+    elif [ -f /bootforge/grub.cfg ]; then
+        configfile /bootforge/grub.cfg
+    elif [ -f /EFI/BOOT/grub.cfg ]; then
+        configfile /EFI/BOOT/grub.cfg
+    fi
+fi
+
+# Emergency Fallback Menu
+menuentry "⚡ [BootForge OS] System Control Center & Telemetry" {{
+    echo "================================================================"
+    echo " ⚡ BOTDIGIT BOOTFORGE UNIVERSAL BOOT OS (Emergency Core)"
+    echo "================================================================"
+    echo " Firmware Platform : $grub_platform ($grub_cpu)"
+    echo " Root Drive        : $root"
+    echo " Status            : Online & Safe Mode Active"
+    echo "================================================================"
+    echo ""
+    echo "Press Enter to return..."
+    read
+}}
+
+menuentry "💽 Scan Disks & Partitions" {{
+    ls -l
+    echo "Press Enter to return..."
+    read
+}}
+
+menuentry "🔄 Reboot Computer" {{
+    reboot
+}}
+
+menuentry "🛑 Power Off Computer" {{
+    halt
+}}
+"""
+            with open(os.path.join(vtoy_grub, "grub.cfg"), "w") as f:
+                f.write(forwarder_cfg)
+            with open(os.path.join(vtoy_efi, "grub.cfg"), "w") as f:
+                f.write(forwarder_cfg)
 
         print("✅ Universal Botdigit BootForge USB is completely installed and ready to boot!")
 

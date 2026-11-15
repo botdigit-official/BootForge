@@ -1,7 +1,7 @@
 import Cocoa
 import WebKit
 
-class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, WKNavigationDelegate {
     var window: NSWindow!
     var webView: WKWebView!
     var backendProcess: Process?
@@ -23,8 +23,24 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             let proc = Process()
             proc.executableURL = URL(fileURLWithPath: pathToCheck)
             proc.arguments = ["ui", "--port", "\(defaultPort)", "--no-open"]
-            try? proc.run()
-            self.backendProcess = proc
+            
+            // Redirect output to log file for easy debugging
+            let logPath = "/tmp/bootforge_engine.log"
+            FileManager.default.createFile(atPath: logPath, contents: nil, attributes: nil)
+            if let fileHandle = FileHandle(forWritingAtPath: logPath) {
+                proc.standardOutput = fileHandle
+                proc.standardError = fileHandle
+            }
+            
+            do {
+                try proc.run()
+                self.backendProcess = proc
+                NSLog("BootForge: backend engine process started (PID %d)", proc.processIdentifier)
+            } catch {
+                NSLog("BootForge: failed to start backend process: %@", error.localizedDescription)
+            }
+        } else {
+            NSLog("BootForge: binary path not found: %@", pathToCheck)
         }
     }
 
@@ -49,9 +65,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         window.delegate = self
         
         let config = WKWebViewConfiguration()
+        config.preferences.setValue(true, forKey: "developerExtrasEnabled")
+        
         webView = WKWebView(frame: rect, configuration: config)
         webView.autoresizingMask = [.width, .height]
         webView.setValue(false, forKey: "drawsBackground") // Transparent background until loaded
+        webView.navigationDelegate = self
         
         window.contentView = webView
         window.makeKeyAndOrderFront(nil)
@@ -71,6 +90,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             let task = URLSession.shared.dataTask(with: request) { _, response, _ in
                 if let httpResp = response as? HTTPURLResponse, httpResp.statusCode == 200 {
                     DispatchQueue.main.async {
+                        NSLog("BootForge: server ready at %@", url.absoluteString)
                         self.webView.load(URLRequest(url: url))
                         timer.invalidate()
                     }
@@ -78,14 +98,27 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             }
             task.resume()
             
-            if attempts > 30 {
+            if attempts > 50 {
                 // Fallback direct load
                 DispatchQueue.main.async {
+                    NSLog("BootForge: fallback direct load to %@", url.absoluteString)
                     self.webView.load(URLRequest(url: url))
                     timer.invalidate()
                 }
             }
         }
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        NSLog("BootForge: webView finished loading")
+    }
+
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        NSLog("BootForge: webView navigation failed: %@", error.localizedDescription)
+    }
+
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+        NSLog("BootForge: webView provisional navigation failed: %@", error.localizedDescription)
     }
 
     func applicationWillTerminate(_ notification: Notification) {

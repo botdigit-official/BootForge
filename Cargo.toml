@@ -10,7 +10,7 @@ members = [
 
 [workspace.package]
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 authors = ["Botdigit <hello@botdigit.com>"]
 license = "MIT"
 description = "BootForge — Universal boot media manager"

@@ -1,76 +1,98 @@
-//! Direct Raw MBR + Post-MBR Gap Core.img Writer for macOS / Linux.
+//! Privileged disk helper for BootForge (run as root).
+//!
+//! ```text
+//! write_mbr_core --full /dev/diskN LABEL   Erase and create a complete BootForge drive
+//! write_mbr_core /dev/diskN                Re-install the Legacy BIOS boot code only
+//!                                          (keeps partitions and files; fixes a blinking
+//!                                          cursor on old PCs)
+//! ```
+//!
+//! Both modes refuse internal drives, the boot disk and the disk BootForge runs from.
 
-use std::fs::{File, OpenOptions};
-use std::io::{Read, Seek, SeekFrom, Write};
-use std::process::Command;
+use std::process::exit;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let args: Vec<String> = std::env::args().collect();
-    if args.len() < 2 {
-        eprintln!("Usage: write_mbr_core /dev/diskX");
-        std::process::exit(1);
+fn main() {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let result = match args.as_slice() {
+        [flag, dev, label] if flag == "--full" => full(dev, label),
+        [flag, dev] if flag == "--full" => full(dev, "BOOTFORGE"),
+        [dev] if !dev.starts_with('-') => bios_only(dev),
+        _ => {
+            eprintln!("Usage:\n  write_mbr_core --full /dev/diskN [LABEL]\n  write_mbr_core /dev/diskN");
+            exit(2);
+        }
+    };
+    match result {
+        Ok(msg) => println!("{msg}"),
+        Err(e) => {
+            eprintln!("BootForge: {e}");
+            exit(1);
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn full(dev: &str, label: &str) -> Result<String, String> {
+    bootforge_managers::format::write_standard_drive_macos(dev, label)
+}
+
+/// Rewrite sector 0 boot code and sectors 1..2047 (core.img) while keeping the
+/// partition table, disk UUID and every file.
+#[cfg(target_os = "macos")]
+fn bios_only(dev: &str) -> Result<String, String> {
+    use bootforge_managers::format::{load_boot_payloads, resolve_bootforge_assets_dir};
+    use std::fs::OpenOptions;
+    use std::io::{Read, Seek, SeekFrom, Write};
+    use std::process::Command;
+
+    let clean_id = dev.trim_start_matches("/dev/").replace("rdisk", "disk");
+    bootforge_managers::device::ensure_safe_write_target(&clean_id)?;
+    let (boot_img, core_img, _esp) = load_boot_payloads(&resolve_bootforge_assets_dir())?;
+
+    let _ = Command::new("diskutil").args(["unmountDisk", "force", &clean_id]).output();
+    let raw = format!("/dev/r{clean_id}");
+    let mut disk = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(&raw)
+        .map_err(|e| format!("Cannot open {raw}: {e}"))?;
+
+    let mut mbr = [0u8; 512];
+    disk.read_exact(&mut mbr).map_err(|e| e.to_string())?;
+    if mbr[510] != 0x55 || mbr[511] != 0xAA || mbr[466] != 0xEF {
+        return Err(format!(
+            "/dev/{clean_id} is not a BootForge drive (no MBR with an EFI partition 2). Use Format instead."
+        ));
+    }
+    let first_part_start = u32::from_le_bytes(mbr[454..458].try_into().unwrap());
+    if first_part_start < 2048 {
+        return Err("Partition 1 starts before sector 2048; there is no room for the BIOS stage 2.".into());
     }
 
-    let dev_name = &args[1];
-    let clean_id = dev_name.trim_start_matches("/dev/").replace("rdisk", "disk");
-    let raw_path = format!("/dev/r{}", clean_id);
+    // Bytes 0..384 boot code, keep 384..446 (disk UUID + signature) and the table.
+    mbr[..384].copy_from_slice(&boot_img[..384]);
+    mbr[446] = 0x80; // partition 1 active: some old BIOSes skip disks without an active partition
+    let mut core = core_img;
+    core.resize(bootforge_managers::boot_layout::CORE_MAX_BYTES, 0);
 
-    println!("⚡ Target raw device: {}", raw_path);
+    let io = |e: std::io::Error| e.to_string();
+    disk.seek(SeekFrom::Start(512)).map_err(io)?;
+    disk.write_all(&core).map_err(io)?;
+    disk.seek(SeekFrom::Start(0)).map_err(io)?;
+    disk.write_all(&mbr).map_err(io)?;
+    disk.flush().map_err(io)?;
+    drop(disk);
 
-    // 1. Force unmount
-    println!("1. Force unmounting {}...", clean_id);
-    let _ = Command::new("diskutil")
-        .args(["unmountDisk", "force", &clean_id])
-        .status();
+    let _ = Command::new("diskutil").args(["mountDisk", &clean_id]).output();
+    Ok(format!("Legacy BIOS boot code re-installed on /dev/{clean_id}. Files were not touched."))
+}
 
-    // 2. Read boot.img and core.img
-    let boot_img_path = "/Volumes/Mac2TB/Botdigit/Developer/Projects/BootForge/src/managers/assets/ventoy_core/boot/boot.img";
-    let core_img_path = "/tmp/core.img";
+#[cfg(not(target_os = "macos"))]
+fn full(dev: &str, _label: &str) -> Result<String, String> {
+    Err(format!("Not implemented on this OS; use ventoy_core/Ventoy2Disk.sh -i {dev}"))
+}
 
-    let mut boot_img = Vec::new();
-    File::open(boot_img_path)?.read_to_end(&mut boot_img)?;
-
-    let mut core_img = Vec::new();
-    File::open(core_img_path)?.read_to_end(&mut core_img)?;
-
-    println!("   boot.img: {} bytes", boot_img.len());
-    println!("   core.img: {} bytes", core_img.len());
-
-    // 3. Open raw disk
-    println!("2. Writing to {}...", raw_path);
-    let mut disk = OpenOptions::new().read(true).write(true).open(&raw_path)?;
-
-    // Read current MBR partition table (bytes 446..512)
-    let mut mbr = vec![0u8; 512];
-    disk.read_exact(&mut mbr)?;
-
-    // Preserve partition table entries (offset 446 to 510) and signature 0x55AA
-    let part_table = mbr[446..512].to_vec();
-
-    // Merge boot.img (first 446 bytes) with preserved partition table
-    let mut new_mbr = vec![0u8; 512];
-    new_mbr[0..446].copy_from_slice(&boot_img[0..446]);
-    new_mbr[446..512].copy_from_slice(&part_table);
-    // Ensure Partition 1 is marked ACTIVE (0x80)
-    new_mbr[446] = 0x80;
-
-    // Write MBR to Sector 0
-    disk.seek(SeekFrom::Start(0))?;
-    disk.write_all(&new_mbr)?;
-    println!("✓ Sector 0 MBR bootstrap written (Active flag: 0x80)");
-
-    // Write Core.img into Sectors 1..2047 (post-MBR gap, 1048064 bytes)
-    let core_len = core_img.len().min(2047 * 512);
-    disk.seek(SeekFrom::Start(512))?;
-    disk.write_all(&core_img[0..core_len])?;
-    disk.flush()?;
-    println!("✓ Sectors 1..2047 Post-MBR GRUB2 Core written ({} bytes)", core_len);
-
-    // 4. Re-mount Partition 1
-    println!("3. Re-mounting volumes...");
-    let _ = Command::new("diskutil").args(["mountDisk", &clean_id]).status();
-
-    println!("✅ MBR + Core.img successfully written! Ready for ThinkPad R400 Legacy BIOS boot.");
-
-    Ok(())
+#[cfg(not(target_os = "macos"))]
+fn bios_only(dev: &str) -> Result<String, String> {
+    Err(format!("Not implemented on this OS; use ventoy_core/Ventoy2Disk.sh -u {dev}"))
 }

@@ -31,14 +31,19 @@ swiftc -O src/native/mac_app.swift -o "$MACOS_DIR/$APP_NAME" -framework Cocoa -f
 
 chmod +x "$MACOS_DIR/$APP_NAME"
 
-# 2. Copy Rust Backend Engine
+# 2. Copy Rust Backend Engine & MBR writer
 cp "target/release/bootforge" "$MACOS_DIR/bootforge_engine"
 chmod +x "$MACOS_DIR/bootforge_engine"
 cp "target/release/bootforge" "$MACOS_DIR/bootforge"
 chmod +x "$MACOS_DIR/bootforge"
+if [ -f "target/release/write_mbr_core" ]; then
+    cp "target/release/write_mbr_core" "$MACOS_DIR/write_mbr_core"
+    chmod +x "$MACOS_DIR/write_mbr_core"
+fi
 
-# 3. Copy App Icon
+# 3. Copy App Icon and Boot Assets
 cp "assets/icons/AppIcon.icns" "$RESOURCES_DIR/AppIcon.icns"
+cp -R "src/managers/assets" "$RESOURCES_DIR/assets"
 
 # 4. Create Info.plist
 cat > "$CONTENTS_DIR/Info.plist" << EOF

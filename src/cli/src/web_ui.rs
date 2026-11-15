@@ -523,6 +523,21 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       transition: width 0.2s ease;
       box-shadow: 0 0 14px var(--accent);
     }
+    /* ── Simple 3-step flow ── */
+    .step-num { display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:50%;
+      background: var(--accent, #10B981); color:#04130D; font-weight:800; font-size:13px; margin-right:8px; flex:none; }
+    .tool-row { display:flex; gap:12px; align-items:flex-start; padding:10px 12px; border:1px solid var(--border);
+      border-radius:10px; cursor:pointer; background: var(--bg-card); }
+    .tool-row:hover { border-color: rgba(16,185,129,0.5); }
+    .tool-row input { margin-top:3px; width:16px; height:16px; accent-color:#10B981; flex:none; }
+    .tool-name { font-weight:700; font-size:14px; }
+    .tool-size { font-family: var(--font-mono); font-size:11px; color: var(--text-dim); margin-left:6px; }
+    .tool-purpose { font-size:12px; color: var(--text-muted); margin-top:2px; line-height:1.4; }
+    .tool-list { display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:8px; }
+    .muted-note { font-size:12px; color: var(--text-dim); line-height:1.5; }
+    .summary-line { font-size:13px; color: var(--text-muted); }
+    .summary-line strong { color:#E5E7EB; }
+    .linklike { background:none; border:none; color:#34D399; cursor:pointer; font-size:12px; padding:0; text-decoration:underline; }
   </style>
 </head>
 <body>
@@ -537,64 +552,32 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       </div>
     </div>
 
-    <!-- Robotic Core Telemetry Ribbon -->
-    <div class="telemetry-ribbon">
-      <div class="telemetry-item">
-        <div class="status-dot"></div>
-        <span>CORE ONLINE</span>
-      </div>
-      <div class="telemetry-item">
-        <span style="color: var(--cyan);">●</span>
-        <span id="telemetryFirmware">UEFI / BIOS ACTIVE</span>
-      </div>
-      <div class="telemetry-item">
-        <span style="color: var(--accent);">🛡️</span>
-        <span>SECURE BOOT READY</span>
-      </div>
-    </div>
-
     <!-- Main Navigation Tabs -->
     <div class="nav-tabs">
-      <button class="tab-btn active" onclick="switchTab('tabBoot')">🚀 Boot Studio</button>
-      <button class="tab-btn" onclick="switchTab('tabRecovery')">🧰 Recovery Center</button>
-      <button class="tab-btn" onclick="switchTab('tabExplorer')">📁 USB Explorer</button>
-      <button class="tab-btn" onclick="switchTab('tabIsoIntel')">💿 ISO Intelligence</button>
-      <button class="tab-btn" onclick="switchTab('tabHardware')">🔎 Hardware Explorer</button>
-      <button class="tab-btn" onclick="switchTab('tabRepair')">🔥 Boot Repair</button>
+      <button class="tab-btn active" onclick="switchTab('tabBoot')">🚀 Create Drive</button>
+      <button class="tab-btn" onclick="switchTab('tabExplorer')">📁 Drive Files</button>
+      <button class="tab-btn" onclick="switchTab('tabIsoIntel')">💿 Check an Image</button>
+      <button class="tab-btn" onclick="switchTab('tabRepair')">🛠️ Repair Drive</button>
+      <button class="tab-btn" onclick="switchTab('tabHardware')">🔎 This Mac</button>
     </div>
   </header>
 
   <main>
-    <!-- Left Panel: Storage Drives -->
+    <!-- Left Panel: Step 1 — choose the USB drive -->
     <div class="panel">
       <div class="panel-header">
-        <div class="panel-title">💾 Target USB Drive</div>
+        <div class="panel-title"><span class="step-num">1</span>Choose USB drive</div>
         <button class="btn-secondary" style="padding: 4px 10px; font-size: 11px;" onclick="loadDevices()">↻ Refresh</button>
       </div>
 
       <div id="deviceList" style="display: flex; flex-direction: column; gap: 10px;">
-        <div style="color: var(--text-dim); font-size: 13px; text-align: center; padding: 20px;">Scanning macOS storage devices...</div>
+        <div class="muted-note" style="text-align: center; padding: 20px;">Looking for drives…</div>
       </div>
 
-      <!-- Drive Diagnostics Summary -->
-      <div id="deviceQuickStats" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; display: none; flex-direction: column; gap: 8px;">
-        <div style="font-size: 12px; font-weight: 700; color: #34D399;">⚡ ACTIVE DRIVE TELEMETRY</div>
-        <div style="font-size: 12px; color: var(--text-muted);" id="statMountPath">Mount: /Volumes/BOTDIGIT</div>
-        <div style="font-size: 12px; color: var(--text-muted);" id="statFreeSpace">Available Space: 249.4 GB</div>
-        <div style="display: flex; gap: 8px; margin-top: 4px;">
-          <button class="btn-secondary" style="font-size: 11px; padding: 4px 10px; flex: 1;" onclick="openSelectedMountInFinder()">📂 Open Finder</button>
-          <button class="btn-secondary" style="font-size: 11px; padding: 4px 10px; flex: 1;" onclick="switchTab('tabRepair')">🛡️ Audit Boot</button>
-        </div>
-        <button class="btn-primary" style="font-size: 11px; padding: 6px 10px; width: 100%; margin-top: 4px; justify-content: center;" onclick="testInVm(false)">
-          🎮 Test Boot in Live VM (ThinkPad BIOS)
-        </button>
-        <button class="btn-secondary" style="font-size: 11px; padding: 6px 10px; width: 100%; justify-content: center;" onclick="testInVm(true)">
-          ⚡ Test Boot in Live VM (UEFI Mode)
-        </button>
-      </div>
+      <div id="protectedNote" class="muted-note"></div>
 
-      <div style="background: rgba(6, 182, 212, 0.08); border: 1px solid rgba(6, 182, 212, 0.25); border-radius: 10px; padding: 12px; font-size: 11px; color: #67E8F9;">
-        🛡️ <strong>Safety System Active</strong>: Internal Apple SSDs are strictly locked. Drives larger than 100 GB require explicit typed authorization.
+      <div class="muted-note" style="border-top: 1px solid var(--border); padding-top: 10px;">
+        Plug in a USB stick or external SSD (8 GB – 2 TB). Your Mac's own disk and the drive BootForge runs from are locked and never shown here.
       </div>
     </div>
 
@@ -614,98 +597,69 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
         </div>
       </div>
 
-      <!-- 🚀 TAB 1: BOOT STUDIO -->
+      <!-- 🚀 TAB 1: CREATE DRIVE -->
       <div class="tab-content active" id="tabBoot">
-        <!-- Add ISO Box -->
+
+        <!-- Step 2a: Botdigit Rescue Toolkit (preselected) -->
         <div class="panel">
           <div class="panel-header">
-            <div class="panel-title">📂 Add Operating System Images (ISO, WIM, IMG)</div>
-          </div>
-
-          <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
-            <input type="file" id="fileInput" multiple accept=".iso,.wim,.img,.vhd,.vhdx,.dmg,.raw" style="display: none;" onchange="handleBrowserFileInput(event)">
-            <div style="font-size: 32px;">📥</div>
-            <div style="font-size: 16px; font-weight: 700;">Drag & Drop ISO files here, or browse local disk</div>
-            <div style="font-size: 12px; color: var(--text-muted);">Supports Windows 11/10, Ubuntu, Linux Mint, Debian, Fedora, Arch, Clonezilla & Utilities</div>
-            
-            <div class="picker-buttons" onclick="event.stopPropagation()">
-              <button class="btn-primary" style="font-size: 12px; padding: 8px 16px;" onclick="pickFromFinder()">
-                🍎 Browse from Mac Finder...
-              </button>
-              <button class="btn-secondary" style="font-size: 12px; padding: 8px 16px;" onclick="document.getElementById('fileInput').click()">
-                📁 Choose Local File
-              </button>
+            <div>
+              <div class="panel-title"><span class="step-num">2</span>Botdigit Rescue Toolkit <span class="badge badge-emerald" style="margin-left:8px;">Recommended</span></div>
+              <div class="muted-note" style="margin-top: 4px;">Repair, backup, format and wipe tools every technician needs. Latest official versions, checksum-verified, downloaded once and cached on this Mac.</div>
             </div>
           </div>
-
-          <!-- Quick Presets -->
-          <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 4px;">
-            <span style="font-size: 12px; color: var(--text-dim); font-weight: 700;">QUICK ADD:</span>
-            <button class="btn-secondary" style="font-size: 11px; padding: 4px 10px;" onclick="quickAdd('Linux Mint 22.3', 'linuxmint-22.3-cinnamon-64bit.iso', 'linux')">🐧 Linux Mint 22.3</button>
-            <button class="btn-secondary" style="font-size: 11px; padding: 4px 10px;" onclick="quickAdd('Ubuntu 24.04 LTS', 'ubuntu-24.04-desktop-amd64.iso', 'linux')">🐧 Ubuntu 24.04</button>
-            <button class="btn-secondary" style="font-size: 11px; padding: 4px 10px;" onclick="quickAdd('Windows 11 (24H2)', 'Win11_24H2_English_x64.iso', 'windows')">🪟 Windows 11</button>
-            <button class="btn-secondary" style="font-size: 11px; padding: 4px 10px;" onclick="quickAdd('Clonezilla Live', 'clonezilla-live-3.1.2-amd64.iso', 'rescue')">💽 Clonezilla</button>
-          </div>
+          <div class="tool-list" id="toolkitList"><div class="muted-note">Loading tools…</div></div>
         </div>
 
-        <!-- Selected Images Queue -->
+        <!-- Step 2b: your own operating systems (optional) -->
         <div class="panel">
           <div class="panel-header">
-            <div class="panel-title">💿 Selected Images on Boot Drive (<span id="selectedCount">0</span>)</div>
-            <button class="btn-secondary" style="padding: 4px 10px; font-size: 11px;" onclick="clearSelectedIsos()">Clear All</button>
-          </div>
-
-          <div class="cards-grid" id="isoCardsQueue">
-            <div style="color: var(--text-dim); font-size: 13px; padding: 20px; grid-column: 1 / -1; text-align: center;">
-              No operating system images selected. Drop an ISO above to start.
+            <div>
+              <div class="panel-title">💿 Your operating systems <span class="muted-note" style="font-weight:400;">(optional)</span></div>
+              <div class="muted-note" style="margin-top: 4px;">Windows, Linux, BSD installers… (.iso .wim .vhd .img). You can also copy files onto the drive later in Finder.</div>
             </div>
+            <button class="btn-primary" style="font-size: 12px; padding: 8px 14px;" onclick="pickFromFinder()">➕ Add image…</button>
           </div>
+
+          <div class="dropzone" id="dropzone" style="padding: 14px;" onclick="pickFromFinder()">
+            <div style="font-size: 13px; color: var(--text-muted);">Click to choose image files in Finder (you can select several)</div>
+          </div>
+
+          <div class="cards-grid" id="isoCardsQueue"></div>
+          <span id="selectedCount" style="display:none;">0</span>
         </div>
 
-        <!-- Drive Setup & Formatting Options -->
+        <!-- Step 3: create -->
         <div class="panel">
           <div class="panel-header">
-            <div class="panel-title">⚙️ Drive Setup & Bootloader Options</div>
+            <div class="panel-title"><span class="step-num">3</span>Create the drive</div>
           </div>
-          
+
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px;">
             <div style="display: flex; flex-direction: column; gap: 6px;">
-              <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); font-family: var(--font-mono);">SETUP & FORMAT MODE</span>
-              <select id="optSetupMode" class="btn-secondary" style="width: 100%;">
-                <option value="fresh_multiboot" selected>🔄 Fresh Format (Create BOTDIGIT USB)</option>
-                <option value="add_isos">⚡ Non-Destructive (Keep Files & Inject Boot)</option>
-                <option value="raw_flash">🧼 Single-OS Flash (Raw DD Mode)</option>
+              <span class="muted-note" style="font-weight: 700;">WHAT TO DO</span>
+              <select id="optSetupMode" class="btn-secondary" style="width: 100%;" onchange="updateSummary()">
+                <option value="fresh_multiboot" selected>New drive — erase and make bootable</option>
+                <option value="add_isos">Add to my existing BootForge drive (keep files)</option>
               </select>
             </div>
-
             <div style="display: flex; flex-direction: column; gap: 6px;">
-              <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); font-family: var(--font-mono);">VOLUME LABEL</span>
-              <input type="text" id="optVolumeLabel" class="btn-secondary" value="BOTDIGIT" style="font-family: var(--font-mono); font-weight: 700;" placeholder="BOTDIGIT">
+              <span class="muted-note" style="font-weight: 700;">DRIVE NAME</span>
+              <input type="text" id="optVolumeLabel" class="btn-secondary" value="BOTDIGIT" maxlength="11" style="font-family: var(--font-mono); font-weight: 700;">
             </div>
-
-            <div style="display: flex; flex-direction: column; gap: 6px;">
-              <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); font-family: var(--font-mono);">PARTITION SCHEME & FS</span>
-              <div style="display: flex; gap: 6px;">
-                <select id="optPartitionScheme" class="btn-secondary" style="flex: 1;">
-                  <option value="MBR" selected>MBR (Universal BIOS + UEFI)</option>
-                  <option value="GPT">GPT (UEFI Only)</option>
-                </select>
-                <select id="optFilesystem" class="btn-secondary" style="flex: 1;">
-                  <option value="ExFAT" selected>ExFAT (Mac+PC)</option>
-                  <option value="FAT32">FAT32</option>
-                  <option value="NTFS">NTFS</option>
-                </select>
-              </div>
-            </div>
+            <input type="hidden" id="optPartitionScheme" value="UNIVERSAL">
+            <input type="hidden" id="optFilesystem" value="ExFAT">
           </div>
 
-          <div style="display: flex; gap: 12px; margin-top: 10px;">
-            <button class="btn-primary" style="flex: 1;" onclick="initiateBootDriveCreation()">
-              🚀 MAKE BOTDIGIT MULTI-BOOT DRIVE
-            </button>
-            <button class="btn-secondary" onclick="switchTab('tabRepair')">
-              🛠️ Non-Destructive Repair
-            </button>
+          <div class="summary-line" id="createSummary" style="margin-top: 12px;"></div>
+
+          <button class="btn-primary" id="btnCreate" style="width: 100%; justify-content: center; margin-top: 12px; padding: 14px; font-size: 15px;" onclick="initiateBootDriveCreation()">
+            🚀 Create BootForge drive
+          </button>
+
+          <div class="muted-note" style="margin-top: 10px;">
+            Boots old PCs (Legacy BIOS), UEFI and Secure Boot PCs, 32-bit UEFI tablets and Intel Macs.
+            Old PC shows a blinking cursor? <button class="linklike" onclick="injectLegacyBiosBootstrap()">Fix Legacy BIOS boot</button>
           </div>
         </div>
 
@@ -823,9 +777,12 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
           </div>
         </div>
 
-        <div style="display: flex; gap: 12px;">
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
           <button class="btn-primary" onclick="repairBootloader()">
-            🛠️ REPAIR USB BOOTLOADER NOW
+            🛠️ REPAIR USB BOOTLOADER (UEFI + CONFIGS)
+          </button>
+          <button class="btn-secondary" onclick="injectLegacyBiosBootstrap()" style="border-color: #34D399; color: #34D399;">
+            ⚡ FIX THINKPAD R400 / LEGACY BIOS BLINKING CURSOR
           </button>
         </div>
 
@@ -838,13 +795,13 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
   <!-- Large Drive Safety Confirmation Modal -->
   <div class="modal-backdrop" id="safetyModal">
     <div class="modal-box">
-      <div style="font-size: 18px; font-weight: 800; color: #FCD34D;">⚠️ High-Capacity Drive Safety Guard</div>
+      <div style="font-size: 18px; font-weight: 800; color: #FCD34D;">⚠️ Erase this drive?</div>
       <div id="safetyModalText" style="font-size: 13px; line-height: 1.6; color: var(--text-muted);"></div>
       
       <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 10px; padding: 14px;">
         <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13px; font-weight: 600;">
           <input type="checkbox" id="safetyCheck">
-          <span>I understand and explicitly permit formatting this drive.</span>
+          <span>Yes, erase everything on this drive.</span>
         </label>
       </div>
 
@@ -855,7 +812,7 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
 
       <div style="display: flex; justify-content: flex-end; gap: 10px;">
         <button class="btn-secondary" onclick="closeSafetyModal()">Cancel</button>
-        <button class="btn-danger" id="btnConfirmLargeDrive" disabled onclick="executeBootDriveCreation()">Proceed & Format</button>
+        <button class="btn-danger" id="btnConfirmLargeDrive" disabled onclick="executeBootDriveCreation()">Erase and create</button>
       </div>
     </div>
   </div>
@@ -864,10 +821,13 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
     let devicesData = [];
     let selectedDevice = null;
     let selectedIsos = [];
+    let toolkitItems = [];
+    let selectedTools = new Set();
 
     // Initialize UI
     window.addEventListener('DOMContentLoaded', () => {
       loadDevices();
+      loadToolkit();
       loadRecoveryCatalog();
       loadHardwareTelemetry();
     });
@@ -896,56 +856,104 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
 
     function renderDevices() {
       const list = document.getElementById('deviceList');
+      const note = document.getElementById('protectedNote');
       list.innerHTML = '';
+      const usable = devicesData.filter(d => !d.is_system_drive);
+      const locked = devicesData.filter(d => d.is_system_drive);
+      note.textContent = locked.length
+        ? `🔒 ${locked.length} protected drive${locked.length > 1 ? 's' : ''} hidden (${locked.map(d => d.model).join(', ')}).`
+        : '';
 
-      if (devicesData.length === 0) {
-        list.innerHTML = '<div style="color: var(--text-dim); font-size: 13px; text-align: center; padding: 20px;">No USB devices found. Connect a drive.</div>';
+      if (usable.length === 0) {
+        list.innerHTML = '<div class="muted-note" style="text-align: center; padding: 20px;">No USB drive found.<br>Plug one in and press Refresh.</div>';
+        selectedDevice = null;
+        updateSummary();
         return;
       }
+      if (!usable.some(d => d.id === selectedDevice)) selectedDevice = usable[0].id;
 
-      devicesData.forEach(dev => {
-        const isSelected = selectedDevice === dev.id;
-        const gb = (dev.capacity / (1000 * 1000 * 1000)).toFixed(1);
+      usable.forEach(dev => {
+        const gb = (dev.capacity / 1e9).toFixed(1);
         const card = document.createElement('div');
-        card.className = `device-card ${isSelected ? 'selected' : ''} ${dev.is_system_drive ? 'system-locked' : ''}`;
-        
+        card.className = `device-card ${selectedDevice === dev.id ? 'selected' : ''}`;
         card.innerHTML = `
           <div class="device-header">
-            <span class="device-name">${dev.vendor} ${dev.model}</span>
+            <span class="device-name">${escapeHtml(dev.model || dev.vendor)}</span>
             <span class="device-capacity">${gb} GB</span>
           </div>
-          <div class="device-meta">
-            <span>/dev/${dev.id}</span>
-            <span>•</span>
-            <span>${dev.interface}</span>
-          </div>
-          <div style="margin-top: 8px; display: flex; gap: 6px;">
-            ${dev.is_system_drive ? '<span class="badge badge-red">🔒 System Disk</span>' : ''}
-            ${dev.capacity > 100e9 ? '<span class="badge badge-amber">⚠️ >100 GB</span>' : '<span class="badge badge-emerald">✓ Ready</span>'}
-          </div>
+          <div class="device-meta"><span>/dev/${dev.id}</span></div>
+          ${dev.capacity > 2.2e12 ? '<div class="muted-note" style="color:#FCD34D;">Larger than 2 TB: only the first 2 TB can be used.</div>' : ''}
         `;
-
-        if (!dev.is_system_drive) {
-          card.onclick = () => selectDevice(dev.id);
-        }
+        card.onclick = () => selectDevice(dev.id);
         list.appendChild(card);
       });
-
-      if (!selectedDevice && devicesData.length > 0) {
-        const firstUsable = devicesData.find(d => !d.is_system_drive);
-        if (firstUsable) selectDevice(firstUsable.id);
-      }
+      updateSummary();
     }
 
     function selectDevice(id) {
       selectedDevice = id;
       renderDevices();
-      const dev = devicesData.find(d => d.id === id);
-      if (dev) {
-        document.getElementById('deviceQuickStats').style.display = 'flex';
-        document.getElementById('statMountPath').textContent = `Target: /dev/${dev.id}`;
-        document.getElementById('statFreeSpace').textContent = `Capacity: ${(dev.capacity / 1e9).toFixed(1)} GB`;
+    }
+
+    async function loadToolkit() {
+      try {
+        const res = await fetch('/api/toolkit');
+        toolkitItems = await res.json();
+        selectedTools = new Set(toolkitItems.filter(t => t.default_selected).map(t => t.id));
+        renderToolkit();
+      } catch (e) {
+        document.getElementById('toolkitList').innerHTML = '<div class="muted-note">Could not load the toolkit list.</div>';
       }
+    }
+
+    function renderToolkit() {
+      const list = document.getElementById('toolkitList');
+      list.innerHTML = '';
+      toolkitItems.forEach(t => {
+        const row = document.createElement('label');
+        row.className = 'tool-row';
+        const size = t.approx_mb >= 1000 ? `${(t.approx_mb / 1000).toFixed(1)} GB` : `${t.approx_mb} MB`;
+        row.innerHTML = `
+          <input type="checkbox" ${selectedTools.has(t.id) ? 'checked' : ''}>
+          <div>
+            <div><span class="tool-name">${escapeHtml(t.name)}</span><span class="tool-size">${size}</span></div>
+            <div class="tool-purpose">${escapeHtml(t.purpose)}</div>
+          </div>`;
+        row.querySelector('input').onchange = (e) => {
+          if (e.target.checked) selectedTools.add(t.id); else selectedTools.delete(t.id);
+          updateSummary();
+        };
+        list.appendChild(row);
+      });
+      updateSummary();
+    }
+
+    function updateSummary() {
+      const el = document.getElementById('createSummary');
+      const btn = document.getElementById('btnCreate');
+      if (!el || !btn) return;
+      const dev = devicesData.find(d => d.id === selectedDevice);
+      const toolMb = toolkitItems.filter(t => selectedTools.has(t.id)).reduce((a, t) => a + t.approx_mb, 0);
+      const isoMb = selectedIsos.reduce((a, i) => a + (i.size_bytes || 0) / 1e6, 0);
+      const needGb = (toolMb + isoMb) / 1000;
+      const mode = document.getElementById('optSetupMode').value;
+      const parts = [];
+      if (selectedTools.size) parts.push(`${selectedTools.size} rescue tool${selectedTools.size > 1 ? 's' : ''}`);
+      if (selectedIsos.length) parts.push(`${selectedIsos.length} operating system${selectedIsos.length > 1 ? 's' : ''}`);
+      const what = parts.length ? parts.join(' + ') : 'an empty bootable drive (copy images later)';
+
+      if (!dev) {
+        el.innerHTML = 'Plug in a USB drive to continue.';
+        btn.disabled = true;
+        return;
+      }
+      const capGb = Math.min(dev.capacity, 2.2e12) / 1e9;
+      const fits = needGb < capGb * 0.97;
+      el.innerHTML = `${mode === 'fresh_multiboot' ? '<strong style="color:#FCA5A5;">Erases</strong> ' : 'Adds to '}<strong>${escapeHtml(dev.model)}</strong> (${capGb.toFixed(0)} GB): ${what}` +
+        ` — needs about <strong>${needGb.toFixed(1)} GB</strong>.` +
+        (fits ? '' : ' <span style="color:#FCA5A5;">Not enough space: untick some tools or use a bigger drive.</span>') +
+        (toolMb > 0 ? '<br><span class="muted-note">Tools are downloaded the first time only; later drives reuse the cached copies.</span>' : '');
+      btn.disabled = !fits || (mode === 'add_isos' && !parts.length);
     }
 
     async function loadRecoveryCatalog() {
@@ -1179,17 +1187,42 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       }
     }
 
+    async function injectLegacyBiosBootstrap() {
+      if (!selectedDevice) {
+        alert("Please select a target USB drive on the left.");
+        return;
+      }
+
+      const confirmed = confirm(
+        `Fix Legacy BIOS boot on /dev/${selectedDevice}\n\n` +
+        `Re-writes the BIOS boot code (sector 0 and the 1 MB gap before the first partition).\n` +
+        `Partitions and image files are not touched.\n\n` +
+        `macOS will ask for your administrator password. Proceed?`
+      );
+
+      if (!confirmed) return;
+
+      try {
+        const res = await fetch('/api/inject-legacy-mbr', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ disk_id: selectedDevice })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert("⚡ " + data.message);
+        } else {
+          alert("❌ Failed: " + data.message);
+        }
+      } catch (e) {
+        alert("❌ Error communicating with BootForge engine: " + e.message);
+      }
+    }
+
+    // Shortcut buttons: add a known image from the local tools folder. The file is analysed
+    // for real; if it is not there you get a clear "File not found" message.
     function quickAdd(name, filename, category) {
-      selectedIsos.push({
-        display_name: name,
-        file_name: filename,
-        file_path: `/Volumes/Mac2TB/Botdigit/tools/${filename}`,
-        size: '2.88 GB',
-        size_bytes: 2_880_000_000,
-        category: category,
-        arch: 'x86_64'
-      });
-      renderSelectedIsos();
+      analyzeAndAddIso(`/Volumes/Mac2TB/Botdigit/tools/${filename}`);
     }
 
     function clearSelectedIsos() {
@@ -1201,32 +1234,22 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       document.getElementById('selectedCount').textContent = selectedIsos.length;
       const grid = document.getElementById('isoCardsQueue');
       grid.innerHTML = '';
-
-      if (selectedIsos.length === 0) {
-        grid.innerHTML = '<div style="color: var(--text-dim); font-size: 13px; padding: 20px; grid-column: 1 / -1; text-align: center;">No images selected. Drop an ISO above to start.</div>';
-        return;
-      }
-
       selectedIsos.forEach((iso, idx) => {
         const card = document.createElement('div');
         card.className = 'smart-card';
         card.innerHTML = `
           <div class="smart-card-top">
-            <div class="card-icon">${iso.file_name.includes('win') ? '🪟' : (iso.file_name.includes('clone') ? '💽' : '🐧')}</div>
-            <div style="flex: 1;">
-              <div style="font-weight: 700; font-size: 14px;">${iso.display_name}</div>
-              <div style="font-size: 11px; color: var(--text-dim); font-family: var(--font-mono);">${iso.size || '2.88 GB'} • ${iso.arch || 'x86_64'}</div>
+            <div style="flex: 1; min-width: 0;">
+              <div style="font-weight: 700; font-size: 14px;">${escapeHtml(iso.display_name)}</div>
+              <div style="font-size: 11px; color: var(--text-dim); font-family: var(--font-mono); overflow-wrap: anywhere;">${escapeHtml(iso.file_name)} • ${escapeHtml(iso.size || '')} • ${escapeHtml(iso.arch || '')}</div>
             </div>
-            <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="removeIso(${idx})">✕</button>
+            <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="removeIso(${idx})" title="Remove">✕</button>
           </div>
-          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-            <span class="badge badge-emerald">✓ UEFI Boot</span>
-            <span class="badge badge-cyan">✓ BIOS Boot</span>
-            <span class="badge badge-purple">✓ SHA256 OK</span>
-          </div>
+          <button class="linklike" style="align-self:flex-start;" onclick="switchTab('tabIsoIntel')">Where will it boot? →</button>
         `;
         grid.appendChild(card);
       });
+      updateSummary();
     }
 
     function removeIso(idx) {
@@ -1238,9 +1261,8 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       try {
         const res = await fetch('/api/pick-file');
         const data = await res.json();
-        if (data.success && data.path) {
-          analyzeAndAddIso(data.path);
-        }
+        const paths = (data.paths && data.paths.length) ? data.paths : (data.path ? [data.path] : []);
+        for (const p of paths) await analyzeAndAddIso(p);
       } catch (e) {
         console.error("Finder picker error", e);
       }
@@ -1265,6 +1287,8 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
           });
           renderSelectedIsos();
           showIsoIntelligence(data);
+        } else if (data.error) {
+          alert(data.error);
         }
       } catch (e) {
         console.error("Analyze error", e);
@@ -1305,8 +1329,33 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
               <div class="progress-track" style="height: 6px;"><div class="progress-bar-fill" style="width: ${data.secure_boot_score || 80}%;"></div></div>
             </div>
           </div>
+          ${(data.warnings || []).map(w => `<div style="margin-top:10px; font-size:12px; color:#FCD34D;">⚠️ ${escapeHtml(w)}</div>`).join('')}
+          ${renderDeviceGuidance(data.device_guidance || [])}
         </div>
       `;
+    }
+
+    function escapeHtml(t) {
+      return String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    // "Will it boot?" — one row per device class, steps expand on click.
+    function renderDeviceGuidance(list) {
+      if (!list.length) return '';
+      const icon = v => v === 'Works' ? '✅' : (v === 'WorksWithSteps' ? '🟡' : '❌');
+      const rows = list.map(t => `
+        <details style="border-top:1px solid rgba(148,163,184,0.15); padding:6px 0;">
+          <summary style="cursor:pointer; font-size:12px; list-style:none; display:flex; gap:8px;">
+            <span>${icon(t.verdict)}</span>
+            <span style="font-weight:700; min-width:0;">${escapeHtml(t.device_name)}</span>
+          </summary>
+          <div style="font-size:11px; color:var(--text-muted); margin:4px 0 0 24px;">${escapeHtml(t.summary)}</div>
+          ${t.steps.length ? `<ol style="font-size:11px; margin:4px 0 0 24px; padding-left:16px; color:var(--text-dim);">${t.steps.map(st => `<li style="margin:2px 0;">${escapeHtml(st)}</li>`).join('')}</ol>` : ''}
+        </details>`).join('');
+      return `<div style="margin-top:12px;">
+        <div style="font-size:12px; font-weight:700; color:var(--text-dim); margin-bottom:4px;">WILL IT BOOT? (tap a device for steps)</div>
+        ${rows}
+      </div>`;
     }
 
     function openSelectedMountInFinder() {
@@ -1320,14 +1369,13 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
 
     function initiateBootDriveCreation() {
       if (!selectedDevice) {
-        alert("Please select a target USB drive on the left.");
+        alert("Plug in a USB drive first.");
         return;
       }
       const dev = devicesData.find(d => d.id === selectedDevice);
-      const isLarge = dev && dev.capacity > 100e9;
       const mode = document.getElementById('optSetupMode').value;
 
-      if (isLarge || mode === 'fresh_multiboot') {
+      if (mode === 'fresh_multiboot') {
         openSafetyModal(dev);
       } else {
         executeBootDriveCreation();
@@ -1341,7 +1389,10 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       const gb = (dev.capacity / 1e9).toFixed(1);
       const mode = document.getElementById('optSetupMode').value;
 
-      text.innerHTML = `You have selected <strong>${dev.model}</strong> (<code>/dev/${dev.id}</code> — <strong>${gb} GB</strong>).<br><br>${mode === 'fresh_multiboot' ? '<span style="color: #EF4444; font-weight: 700;">FRESH FORMAT SELECTED:</span> All existing data will be wiped.' : 'Safety permission required for drives >100GB.'}`;
+      text.innerHTML = `<strong>${escapeHtml(dev.model)}</strong> (<code>/dev/${dev.id}</code>, ${gb} GB) will be <strong style="color:#FCA5A5;">completely erased</strong>. Everything on it is lost.<br><br>macOS will then ask for your password to write the boot code.`;
+      document.getElementById('safetyCheck').checked = false;
+      document.getElementById('safetyInput').value = '';
+      document.getElementById('btnConfirmLargeDrive').disabled = true;
       prompt.textContent = dev.id;
       modal.style.display = 'flex';
     }
@@ -1381,6 +1432,10 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       const scheme = document.getElementById('optPartitionScheme').value;
       const fs = document.getElementById('optFilesystem').value;
       const volumeLabel = document.getElementById('optVolumeLabel').value || 'BOTDIGIT';
+      const createBtn = document.getElementById('btnCreate');
+      createBtn.disabled = true;
+      createBtn.textContent = '⏳ Working…';
+      const finish = () => { createBtn.textContent = '🚀 Create BootForge drive'; updateSummary(); };
 
       box.style.display = 'block';
       box.scrollIntoView({ behavior: 'smooth' });
@@ -1414,11 +1469,22 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
               });
             }
 
+            if (p.is_error) {
+              clearInterval(pollTimer);
+              phase.textContent = '❌ ' + (p.message || 'Failed');
+              speedEl.textContent = '—';
+              etaEl.textContent = '—';
+              loadDevices();
+              finish();
+              return;
+            }
+
             if (p.is_completed) {
               clearInterval(pollTimer);
+              finish();
               bar.style.width = '100%';
               percent.textContent = '100%';
-              phase.textContent = '✨ Botdigit Multi-Boot USB Ready!';
+              phase.textContent = '✅ Drive ready — eject it and boot a computer from it (boot-menu key: F12 / F9 / F8 / F11, ⌥ on Intel Macs).';
               speedEl.textContent = '⚡ Completed';
               etaEl.textContent = '⏱️ 0s';
               loadDevices();
@@ -1440,7 +1506,8 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
             partition_scheme: scheme,
             filesystem: fs,
             volume_label: volumeLabel,
-            isos: selectedIsos.map(i => ({ file_path: i.file_path, file_name: i.file_name, display_name: i.display_name }))
+            isos: selectedIsos.map(i => ({ file_path: i.file_path, file_name: i.file_name, display_name: i.display_name })),
+            toolkit: [...selectedTools]
           })
         });
         const resp = await res.json();
@@ -1448,6 +1515,7 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       } catch (err) {
         log.textContent += `❌ Error: ${err.message}\n`;
         clearInterval(pollTimer);
+        finish();
       }
     }
   </script>

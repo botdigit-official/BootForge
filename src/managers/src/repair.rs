@@ -58,29 +58,41 @@ pub fn repair_bootloader_structure(disk_id: &str) -> BootRepairResult {
     }
     logs.push(format!("✓ Preserved {} existing ISO image(s) on drive safely.", existing_isos_count));
 
-    // 2. Repair /EFI/BOOT structure
-    logs.push("Restoring EFI partition structures and /EFI/BOOT/grub.cfg...".to_string());
-    let efi_dir = mount_path.join("EFI").join("BOOT");
-    let efi_restored = fs::create_dir_all(&efi_dir).is_ok();
-
-    // 3. Repair /bootforge engine & themes
-    logs.push("Rebuilding BotDigit BootForge theme configurations and GRUB2 parameters...".to_string());
-    let theme_installed = install_botdigit_boot_theme(&mount_path, "Botdigit BootForge Universal Multi-Boot", "BOOTFORGE").is_ok();
+    // 2. Re-install BootForge configuration (theme, boot options, F6 tools page).
+    //    The boot loader itself lives on the VTOYEFI partition; boot code problems are fixed
+    //    with "Fix Legacy BIOS boot" or by re-creating the drive.
+    logs.push("Re-installing BootForge theme, boot options and F6 tools page...".to_string());
+    let theme_installed = install_botdigit_boot_theme(&mount_path, "Botdigit BootForge", "BOOTFORGE").is_ok();
+    // Remove an empty EFI folder left on the data partition by older versions.
+    let stale_efi = mount_path.join("EFI").join("BOOT");
+    if fs::read_dir(&stale_efi).map(|mut d| d.next().is_none()).unwrap_or(false) {
+        let _ = fs::remove_dir(&stale_efi);
+        let _ = fs::remove_dir(mount_path.join("EFI"));
+    }
+    let efi_restored = false;
 
     // 4. Clean up corrupted or stale temporary files
     let _ = fs::remove_file(mount_path.join(".DS_Store"));
 
-    logs.push("✅ Verification complete. All boot structures restored with zero data loss.".to_string());
+    if theme_installed {
+        logs.push("✅ Configuration restored. Image files were not touched.".to_string());
+    } else {
+        logs.push("❌ Could not write to the drive (is it read-only or full?).".to_string());
+    }
 
     BootRepairResult {
-        success: efi_restored && theme_installed,
+        success: theme_installed,
         disk_id: clean_id.to_string(),
         mount_point,
         efi_restored,
         grub_restored: theme_installed,
         theme_restored: theme_installed,
         isos_preserved_count: existing_isos_count,
-        message: format!("Bootloader successfully repaired on /dev/{}. Preserved {} ISOs.", clean_id, existing_isos_count),
+        message: if theme_installed {
+            format!("Configuration repaired on /dev/{}. {} image(s) kept.", clean_id, existing_isos_count)
+        } else {
+            format!("Repair failed on /dev/{}: the drive could not be written.", clean_id)
+        },
         logs,
     }
 }
