@@ -1333,7 +1333,7 @@ return out"#;
         }
         #[cfg(not(target_os = "macos"))]
         {
-            Ok(None)
+            Ok::<Option<String>, String>(None)
         }
     })
     .await;
