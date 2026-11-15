@@ -49,6 +49,7 @@
    bootforge devices
    bootforge format disk6 --label BOOTFORGE
    ```
+   Add `--toolkit` (or keep it ticked in the app) to include the **Botdigit Rescue Toolkit**: SystemRescue, Clonezilla, GParted, ShredOS and MemTest86+ — latest official releases, checksum-verified, cached on your Mac.
 2. **Copy image files** (`.iso` `.wim` `.vhd(x)` `.img` `.efi`) anywhere onto the `BOOTFORGE` drive. Every file appears in the boot menu automatically — no per-image setup.
 3. **Check where an image will boot** before you walk to the machine:
    ```bash
@@ -470,7 +471,7 @@ bootforge/
 ### Verification Matrix
 | Phase / Component | Automated Test Suite | Physical Hardware Matrix | Status |
 |---|---|---|---|
-| **Phase 1: Rust Core & CLI** | `cargo test --workspace` (67 passing) | macOS Darwin, Win32, Linux block | **Verified** |
+| **Phase 1: Rust Core & CLI** | `cargo test --workspace` (72 passing) | macOS Darwin, Win32, Linux block | **Verified** |
 | **Phase 2: Tauri Desktop Studio** | End-to-end Tauri test harness | Windows 11, macOS M-Series, Ubuntu | **In Progress** |
 | **Phase 3: BootForge Media** | Partition layout test harness | SanDisk, Samsung NVMe, Kingston | Planned |
 | **Phase 4: Intelligence & QEMU** | Headless QEMU test harness | Intel PC, AMD PC, Apple Silicon | Planned |

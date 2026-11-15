@@ -20,5 +20,6 @@ pub mod format;
 pub mod hardware;
 pub mod partition;
 pub mod repair;
+pub mod toolkit;
 pub mod vm;
 pub mod writer;

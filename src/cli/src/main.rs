@@ -104,6 +104,9 @@ enum Commands {
         /// Skip the "type the disk name to confirm" prompt
         #[arg(long)]
         yes: bool,
+        /// Also add the recommended Botdigit Rescue Toolkit (downloads ~2.8 GB once, then cached)
+        #[arg(long)]
+        toolkit: bool,
     },
     /// Explain, device by device, whether an image will boot and exactly how
     Guide {
@@ -115,6 +118,15 @@ enum Commands {
     },
     /// List the device classes BootForge plans for (old BIOS PCs to Apple Silicon)
     Targets,
+    /// Botdigit Rescue Toolkit: list the repair tools, or add them to a mounted BootForge drive
+    Toolkit {
+        /// Mounted BootForge drive to install onto (e.g. /Volumes/BOOTFORGE). Omit to only list.
+        #[arg(long)]
+        drive: Option<PathBuf>,
+        /// Comma-separated tool ids (default: the recommended set). Use `all` for every tool.
+        #[arg(long)]
+        tools: Option<String>,
+    },
     /// Make a bootable macOS installer drive (separate drive; uses Apple's createinstallmedia)
     MacosInstaller {
         /// Path to "Install macOS <Name>.app" (download it from the App Store or `softwareupdate --fetch-full-installer`)
@@ -233,7 +245,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         }
-        Some(Commands::Format { id, label, yes }) => {
+        Some(Commands::Format { id, label, yes, toolkit }) => {
             let clean = id.trim_start_matches("/dev/").replace("rdisk", "disk");
             if let Err(reason) = ensure_safe_write_target(&clean) {
                 eprintln!("❌ Refusing to write /dev/{clean}: {reason}");
@@ -255,6 +267,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             match format_disk_macos(&clean, "MBR", "ExFAT", &label) {
                 Ok(msg) => {
                     println!("✅ {msg}");
+                    if toolkit {
+                        let mount = PathBuf::from(format!(
+                            "/Volumes/{}",
+                            bootforge_managers::format::sanitize_volume_label(&label)
+                        ));
+                        let ids = toolkit_ids(None);
+                        if let Err(e) = install_toolkit_cli(&mount, &ids).await {
+                            eprintln!("⚠️  Drive created, but the toolkit was not fully added: {e}");
+                        }
+                    }
                     println!("Next: copy .iso/.wim/.vhd/.img files onto the drive, then boot from it.");
                     println!("Run `bootforge guide <image.iso>` to see how to boot each image on your devices.");
                 }
@@ -300,6 +322,39 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!("   {}. {}", i + 1, step);
                 }
                 println!();
+            }
+        }
+        Some(Commands::Toolkit { drive, tools }) => {
+            let ids = toolkit_ids(tools.as_deref());
+            match drive {
+                None => {
+                    println!("Botdigit Rescue Toolkit (✓ = recommended, added by default):\n");
+                    for item in bootforge_managers::toolkit::TOOLKIT {
+                        let latest = match bootforge_managers::toolkit::resolve(item).await {
+                            Ok(r) => format!(
+                                "{}{}",
+                                r.file_name,
+                                r.size.map(|s| format!(" ({:.0} MB)", s as f64 / 1e6)).unwrap_or_default()
+                            ),
+                            Err(e) => format!("unavailable: {e}"),
+                        };
+                        println!(
+                            "{} {:<13} {:<20} {}\n    {}\n",
+                            if item.default_selected { "✓" } else { " " },
+                            item.id,
+                            item.name,
+                            latest,
+                            item.purpose
+                        );
+                    }
+                    println!("Add to a drive: bootforge toolkit --drive /Volumes/BOOTFORGE [--tools all|id,id]");
+                }
+                Some(mount) => {
+                    if let Err(e) = install_toolkit_cli(&mount, &ids).await {
+                        eprintln!("❌ {e}");
+                        std::process::exit(1);
+                    }
+                }
             }
         }
         Some(Commands::Targets) => {
@@ -394,6 +449,7 @@ async fn start_server(desired_port: u16, auto_open: bool) -> Result<(), Box<dyn 
         .route("/api/repair-bootloader", post(api_repair_bootloader))
         .route("/api/inject-legacy-mbr", post(api_inject_legacy_mbr))
         .route("/api/recovery-catalog", get(api_recovery_catalog))
+        .route("/api/toolkit", get(api_toolkit))
         .route("/api/download-catalog", get(api_download_catalog))
         .route("/api/start-download", post(api_start_download))
         .route("/api/download-progress", get(api_download_progress))
@@ -589,6 +645,57 @@ fn device_alias(name: &str) -> Option<bootforge_core::types::DeviceClass> {
     })
 }
 
+/// Tool ids from `--tools` (None = recommended set, "all" = every tool).
+fn toolkit_ids(spec: Option<&str>) -> Vec<String> {
+    use bootforge_managers::toolkit::TOOLKIT;
+    match spec.map(str::trim) {
+        None | Some("") | Some("default") => {
+            TOOLKIT.iter().filter(|i| i.default_selected).map(|i| i.id.to_string()).collect()
+        }
+        Some("all") => TOOLKIT.iter().map(|i| i.id.to_string()).collect(),
+        Some(list) => list.split(',').map(|s| s.trim().to_lowercase()).filter(|s| !s.is_empty()).collect(),
+    }
+}
+
+async fn install_toolkit_cli(mount: &std::path::Path, ids: &[String]) -> Result<(), String> {
+    use bootforge_managers::toolkit::{find_item, install_tool};
+    if !mount.join("ventoy").is_dir() {
+        return Err(format!("{} is not a BootForge drive (no ventoy folder). Create one with `bootforge format`.", mount.display()));
+    }
+    let mut failed = Vec::new();
+    for id in ids {
+        let Some(item) = find_item(id) else {
+            failed.push(format!("{id} (unknown tool)"));
+            continue;
+        };
+        println!("🛠  {} — {}", item.name, item.purpose);
+        let mut last_pct = 200u64;
+        let mut report = |msg: &str, done: u64, total: u64, mbps: f64| {
+            let pct = if total > 0 { done * 100 / total } else { 0 };
+            if pct / 10 != last_pct / 10 || total == 0 {
+                last_pct = pct;
+                if total > 0 {
+                    println!("   {msg}: {pct}% ({:.0}/{:.0} MB, {mbps:.1} MB/s)", done as f64 / 1e6, total as f64 / 1e6);
+                } else {
+                    println!("   {msg}");
+                }
+            }
+        };
+        match install_tool(item, mount, &mut report).await {
+            Ok(t) => println!(
+                "   ✅ {} verified and added{}",
+                t.file_name,
+                if t.reused_from_cache { " (from cache)" } else { "" }
+            ),
+            Err(e) => {
+                println!("   ❌ {e}");
+                failed.push(item.name.to_string());
+            }
+        }
+    }
+    if failed.is_empty() { Ok(()) } else { Err(format!("Not added: {}", failed.join(", "))) }
+}
+
 fn verdict_icon(v: bootforge_core::types::BootVerdict) -> &'static str {
     use bootforge_core::types::BootVerdict::*;
     match v {
@@ -694,6 +801,30 @@ async fn api_inject_legacy_mbr(Json(req): Json<InjectLegacyMbrRequest>) -> Json<
     }
 }
 
+
+#[derive(Serialize)]
+struct ToolkitEntry {
+    id: &'static str,
+    name: &'static str,
+    purpose: &'static str,
+    default_selected: bool,
+    approx_mb: u64,
+}
+
+async fn api_toolkit() -> Json<Vec<ToolkitEntry>> {
+    Json(
+        bootforge_managers::toolkit::TOOLKIT
+            .iter()
+            .map(|i| ToolkitEntry {
+                id: i.id,
+                name: i.name,
+                purpose: i.purpose,
+                default_selected: i.default_selected,
+                approx_mb: i.approx_mb,
+            })
+            .collect(),
+    )
+}
 
 async fn api_recovery_catalog() -> Json<Vec<RecoveryToolItem>> {
     let catalog = vec![
@@ -907,6 +1038,9 @@ struct CreateBootDriveRequest {
     theme_name: String,
     #[serde(default)]
     isos: Vec<IsoItemPayload>,
+    /// Botdigit Rescue Toolkit tool ids to add.
+    #[serde(default)]
+    toolkit: Vec<String>,
 }
 
 #[derive(Deserialize, Clone)]
@@ -929,6 +1063,7 @@ struct CreateBootDriveResponse {
 async fn api_create_boot_drive(Json(req): Json<CreateBootDriveRequest>) -> Json<CreateBootDriveResponse> {
     let clean_id = req.disk_id.trim_start_matches("/dev/").to_string();
     let isos = req.isos.clone();
+    let toolkit_ids = req.toolkit.clone();
     let mode = req.mode.clone();
     let scheme = req.partition_scheme.clone();
     let fs_type = req.filesystem.clone();
@@ -1064,6 +1199,45 @@ async fn api_create_boot_drive(Json(req): Json<CreateBootDriveRequest>) -> Json<
             failed.push(format!("drive not mounted at {}", mount_dir));
         }
 
+        // Step 5: Botdigit Rescue Toolkit (download once, verify, cache, copy)
+        if mount_path.exists() && !toolkit_ids.is_empty() {
+            let rt = tokio::runtime::Handle::current();
+            let count = toolkit_ids.len();
+            for (i, id) in toolkit_ids.iter().enumerate() {
+                let Some(item) = bootforge_managers::toolkit::find_item(id) else { continue };
+                {
+                    let mut p = get_progress().lock().unwrap();
+                    p.logs.push(format!("[{}] 🛠 {}: {}", chrono_time(), item.name, item.purpose));
+                }
+                let mut report = |msg: &str, done: u64, total: u64, mbps: f64| {
+                    let mut p = get_progress().lock().unwrap();
+                    let frac = if total > 0 { done as f32 / total as f32 } else { 0.0 };
+                    p.phase = format!("Rescue Toolkit {}/{}: {}", i + 1, count, msg);
+                    p.current_file = item.name.to_string();
+                    p.percentage = (60.0 + 38.0 * ((i as f32 + frac) / count as f32)).min(98.0);
+                    p.bytes_written = done;
+                    p.total_bytes = total;
+                    p.speed_mbps = mbps as f32;
+                    p.eta_seconds = if mbps > 0.0 && total > done { ((total - done) as f64 / 1e6 / mbps) as u64 } else { 0 };
+                };
+                let result = rt.block_on(bootforge_managers::toolkit::install_tool(item, &mount_path, &mut report));
+                let mut p = get_progress().lock().unwrap();
+                match result {
+                    Ok(t) => p.logs.push(format!(
+                        "[{}] ✓ {} verified and added ({}{})",
+                        chrono_time(),
+                        item.name,
+                        t.file_name,
+                        if t.reused_from_cache { ", from cache" } else { "" }
+                    )),
+                    Err(e) => {
+                        failed.push(item.name.to_string());
+                        p.logs.push(format!("[{}] ❌ {}: {}", chrono_time(), item.name, e));
+                    }
+                }
+            }
+        }
+
         if !failed.is_empty() {
             let mut p = get_progress().lock().unwrap();
             p.is_running = false;
@@ -1125,6 +1299,7 @@ fn chrono_time() -> String {
 struct PickFileResponse {
     success: bool,
     path: Option<String>,
+    paths: Vec<String>,
     cancelled: bool,
     error: Option<String>,
 }
@@ -1133,7 +1308,12 @@ async fn api_pick_file() -> Json<PickFileResponse> {
     let result = tokio::task::spawn_blocking(|| {
         #[cfg(target_os = "macos")]
         {
-            let script = r#"POSIX path of (choose file with prompt "Select OS Image (ISO, WIM, IMG)" of type {"iso", "wim", "img", "vhd", "vhdx", "dmg", "raw", "bin"} default location (path to home folder))"#;
+            let script = r#"set picked to choose file with prompt "Choose operating system images" of type {"iso", "wim", "img", "vhd", "vhdx", "dmg", "raw", "bin", "efi"} default location (path to downloads folder) with multiple selections allowed
+set out to ""
+repeat with f in picked
+set out to out & POSIX path of f & linefeed
+end repeat
+return out"#;
             let output = Command::new("osascript")
                 .args(["-e", script])
                 .output();
@@ -1161,23 +1341,27 @@ async fn api_pick_file() -> Json<PickFileResponse> {
     match result {
         Ok(Ok(Some(path))) => Json(PickFileResponse {
             success: true,
-            path: Some(path),
+            paths: path.lines().map(str::trim).filter(|l| !l.is_empty()).map(String::from).collect(),
+            path: path.lines().next().map(|l| l.trim().to_string()),
             cancelled: false,
             error: None,
         }),
         Ok(Ok(None)) => Json(PickFileResponse {
+            paths: vec![],
             success: false,
             path: None,
             cancelled: true,
             error: None,
         }),
         Ok(Err(e)) => Json(PickFileResponse {
+            paths: vec![],
             success: false,
             path: None,
             cancelled: false,
             error: Some(e),
         }),
         Err(e) => Json(PickFileResponse {
+            paths: vec![],
             success: false,
             path: None,
             cancelled: false,

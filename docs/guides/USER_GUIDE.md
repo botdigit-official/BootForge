@@ -46,6 +46,32 @@ You type the disk name once more to confirm. It takes under a minute. Result:
 | `VTOYEFI` (FAT) | 32 MiB | boot loaders for UEFI x64, 32-bit UEFI, ARM64 and Secure Boot |
 | (hidden, before partition 1) | 1 MiB | Legacy BIOS boot code for old PCs |
 
+### Botdigit Rescue Toolkit (ticked by default)
+
+The app adds these repair tools to every new drive unless you untick them. Each is the latest official release, checked against the publisher's checksum, and kept in `~/Library/Caches/BootForge/toolkit` so the next drive needs no download.
+
+| Tool | Use it to | Default |
+|---|---|---|
+| SystemRescue | repair a PC: partitions, recover deleted files (PhotoRec), rescue failing disks (ddrescue), SMART, reset Windows passwords | ✓ |
+| Clonezilla | back up / restore / clone whole disks | ✓ |
+| GParted Live | partition and format any drive | ✓ |
+| ShredOS | securely wipe disks before reuse or disposal | ✓ |
+| MemTest86+ | test RAM | ✓ |
+| Rescuezilla | point-and-click backup and restore | optional |
+| Hiren's BootCD PE | Windows rescue environment | optional |
+
+From the terminal:
+
+```bash
+bootforge toolkit
+```
+
+```bash
+bootforge toolkit --drive /Volumes/BOOTFORGE --tools all
+```
+
+The first lists the latest versions; the second adds tools to an existing drive (`--tools clonezilla,gparted` for a selection). `bootforge format disk6 --toolkit` creates a drive with the recommended set.
+
 ## 3. Add operating systems
 
 Copy image files onto the `BOOTFORGE` drive in Finder. That is all: the boot menu lists every image it finds, in any folder. The `images/windows`, `images/linux`, `images/rescue` folders are only for tidiness.
