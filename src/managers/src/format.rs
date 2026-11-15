@@ -215,14 +215,39 @@ pub fn decompress_xz_file(path: &Path) -> Result<Vec<u8>, String> {
     ))
 }
 
-/// Load the three boot payloads from the assets directory.
+/// Environment variable that points the root helper at pre-unpacked payloads.
+///
+/// macOS blocks root processes started from the password dialog from reading files on
+/// external volumes (this project often lives on one). The unprivileged app therefore
+/// unpacks the payloads into a private temp folder and passes that folder along.
+pub const STAGED_DIR_ENV: &str = "BOOTFORGE_STAGED_DIR";
+
+/// Load the three boot payloads (boot.img, core.img, ESP image).
 pub fn load_boot_payloads(assets: &Path) -> Result<(Vec<u8>, Vec<u8>, Vec<u8>), String> {
+    if let Ok(staged) = std::env::var(STAGED_DIR_ENV) {
+        let staged = PathBuf::from(staged);
+        let read = |name: &str| fs::read(staged.join(name)).map_err(|e| format!("Cannot read staged {name}: {e}"));
+        return Ok((read("boot.img")?, read("core.img")?, read("esp.img")?));
+    }
     let core = assets.join("ventoy_core");
     let boot = fs::read(core.join("boot/boot.img"))
         .map_err(|e| format!("Missing boot/boot.img in {}: {e}", core.display()))?;
     let core_img = decompress_xz_file(&core.join("boot/core.img.xz"))?;
     let esp = decompress_xz_file(&core.join("ventoy/ventoy.disk.img.xz"))?;
     Ok((boot, core_img, esp))
+}
+
+/// Unpack the payloads into a new private (mode 0700) folder under the system temp dir.
+#[cfg(unix)]
+pub fn stage_payloads() -> Result<PathBuf, String> {
+    use std::os::unix::fs::DirBuilderExt;
+    let (boot, core, esp) = load_boot_payloads(&resolve_bootforge_assets_dir())?;
+    let dir = std::env::temp_dir().join(format!("bootforge-stage-{}", uuid::Uuid::new_v4()));
+    fs::DirBuilder::new().mode(0o700).create(&dir).map_err(|e| format!("Cannot create {}: {e}", dir.display()))?;
+    for (name, data) in [("boot.img", &boot), ("core.img", &core), ("esp.img", &esp)] {
+        fs::write(dir.join(name), data).map_err(|e| e.to_string())?;
+    }
+    Ok(dir)
 }
 
 // ── macOS ─────────────────────────────────────────────────────────
@@ -383,6 +408,34 @@ fn running_as_root() -> bool {
         .unwrap_or(false)
 }
 
+/// Run the root disk helper through the macOS password dialog, after staging its payloads.
+#[cfg(target_os = "macos")]
+pub fn run_disk_helper_as_admin(helper_args: &[&str], prompt: &str) -> Result<String, String> {
+    let helper = resolve_disk_helper_path();
+    if !helper.exists() {
+        return Err(format!(
+            "Disk helper not found at {}. Build it with: cargo build --release --bin write_mbr_core",
+            helper.display()
+        ));
+    }
+    let staged = stage_payloads()?;
+    let mut cmd = format!("{STAGED_DIR_ENV}={} ", shell_quote(&staged.to_string_lossy()));
+    // Forward explicit overrides to the root helper (its environment is reset).
+    for var in ["BOOTFORGE_ASSETS_DIR", "BOOTFORGE_ALLOW_DISK_IMAGES"] {
+        if let Ok(v) = std::env::var(var) {
+            cmd.push_str(&format!("{var}={} ", shell_quote(&v)));
+        }
+    }
+    cmd.push_str(&shell_quote(&helper.to_string_lossy()));
+    for a in helper_args {
+        cmd.push(' ');
+        cmd.push_str(&shell_quote(a));
+    }
+    let result = run_as_admin_macos(&cmd, prompt);
+    let _ = fs::remove_dir_all(&staged);
+    result
+}
+
 /// Create a BootForge drive on macOS: erase, write the standard layout (Legacy BIOS + UEFI +
 /// Secure Boot), format the data partition and install BootForge's configuration.
 ///
@@ -391,31 +444,15 @@ fn running_as_root() -> bool {
 pub fn format_disk_macos(disk_id: &str, _scheme: &str, _filesystem: &str, label: &str) -> Result<String, String> {
     let clean_id = disk_id.trim_start_matches("/dev/").replace("rdisk", "disk");
     crate::device::ensure_safe_write_target(&clean_id)?;
-    let label = sanitize_volume_label(label);
+    let label = sanitize_volume_label(&label);
 
     let summary = if running_as_root() {
         write_standard_drive_macos(&clean_id, &label)?
     } else {
-        let helper = resolve_disk_helper_path();
-        if !helper.exists() {
-            return Err(format!(
-                "Disk helper not found at {}. Build it with: cargo build --release --bin write_mbr_core",
-                helper.display()
-            ));
-        }
-        let mut cmd = format!(
-            "{} --full {} {}",
-            shell_quote(&helper.to_string_lossy()),
-            shell_quote(&format!("/dev/{clean_id}")),
-            shell_quote(&label)
-        );
-        // Forward explicit overrides to the root helper (its environment is reset).
-        for var in ["BOOTFORGE_ASSETS_DIR", "BOOTFORGE_ALLOW_DISK_IMAGES"] {
-            if let Ok(v) = std::env::var(var) {
-                cmd = format!("{var}={} {cmd}", shell_quote(&v));
-            }
-        }
-        run_as_admin_macos(&cmd, &format!("BootForge needs to erase /dev/{clean_id} and write boot code."))?
+        run_disk_helper_as_admin(
+            &["--full", &format!("/dev/{clean_id}"), &label],
+            &format!("BootForge needs to erase /dev/{clean_id} and write boot code."),
+        )?
     };
 
     let mount = PathBuf::from(format!("/Volumes/{label}"));
@@ -481,6 +518,23 @@ mod tests {
         assert_eq!(fs::read(root.join("images/linux/a.iso")).unwrap(), b"iso");
         // Must never write a boot loader config that would shadow the scanner.
         assert!(!root.join("EFI").exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn staged_payloads_are_private_and_complete() {
+        use std::os::unix::fs::PermissionsExt;
+        // Only meaningful where the assets and an xz decoder are available.
+        let Ok(dir) = stage_payloads() else {
+            eprintln!("skipping: assets or xz decoder not available");
+            return;
+        };
+        let mode = fs::metadata(&dir).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o700, "staging folder must not be readable by other users");
+        assert_eq!(fs::metadata(dir.join("boot.img")).unwrap().len(), 512);
+        assert_eq!(fs::metadata(dir.join("esp.img")).unwrap().len(), crate::boot_layout::ESP_SECTORS * 512);
+        assert!(fs::metadata(dir.join("core.img")).unwrap().len() > 0);
+        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]

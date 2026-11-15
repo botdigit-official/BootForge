@@ -781,9 +781,8 @@ async fn api_inject_legacy_mbr(Json(req): Json<InjectLegacyMbrRequest>) -> Json<
         }
         #[cfg(target_os = "macos")]
         {
-            let cmd = format!("'{}' '/dev/{}'", bin.display(), clean_id);
-            bootforge_managers::format::run_as_admin_macos(
-                &cmd,
+            bootforge_managers::format::run_disk_helper_as_admin(
+                &[&format!("/dev/{clean_id}")],
                 &format!("BootForge needs to re-install the Legacy BIOS boot code on /dev/{clean_id}."),
             )
         }
