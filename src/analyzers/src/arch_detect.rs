@@ -2,20 +2,26 @@
 
 use bootforge_core::types::Architecture;
 
-/// Detect CPU architecture from filename, volume label, or binary headers.
+/// Detect CPU architecture from filename or volume label.
+///
+/// Token based: `x86_64` → 64-bit, `i386` / `i686` / `386` / `x86` / `32bit` → 32-bit,
+/// `arm64` / `aarch64` / `a64fre` → ARM64. Unlabelled images are assumed 64-bit x86.
 pub fn detect_architecture_from_str(text: &str) -> Architecture {
-    let lower = text.to_lowercase();
+    let lower = text.to_lowercase().replace("x86_64", "x86-64").replace("x86-64", "amd64");
+    let tokens: Vec<&str> = lower.split(|c: char| !c.is_ascii_alphanumeric()).filter(|t| !t.is_empty()).collect();
+    let has = |names: &[&str]| tokens.iter().any(|t| names.contains(t));
 
-    if lower.contains("arm64") || lower.contains("aarch64") {
+    if has(&["arm64", "aarch64", "a64fre", "armv8"]) || lower.contains("a64fre") {
         Architecture::Arm64
-    } else if lower.contains("x86_64") || lower.contains("amd64") || lower.contains("x64") {
+    } else if has(&["amd64", "x64", "64bit", "win64"]) || lower.contains("x64fre") {
         Architecture::X86_64
-    } else if lower.contains("i386") || lower.contains("i686") || lower.contains("x86") {
+    } else if has(&["i386", "i486", "i586", "i686", "386", "686", "x86", "32bit", "win32"])
+        || lower.contains("x86fre")
+    {
         Architecture::X86
-    } else if lower.contains("ia32") {
+    } else if has(&["ia32"]) {
         Architecture::Ia32
     } else {
-        // Most modern ISOs default to x86_64 if unspecified
         Architecture::X86_64
     }
 }

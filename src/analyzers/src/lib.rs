@@ -9,6 +9,7 @@ pub mod format_detect;
 pub mod hash;
 pub mod iso;
 pub mod os_detect;
+pub mod targets;
 
 use bootforge_core::types::*;
 use bootforge_core::{BootForgeError, Result};
@@ -37,7 +38,7 @@ pub async fn analyze_image(path: &Path) -> Result<IsoAnalysis> {
     // 1. Detect format using magic bytes and volume descriptor parser
     let format = iso::classify_image_format(path);
 
-    // 2. Compute SHA256 hash (or read sample for large files)
+    // 2. Quick fingerprint of the first 1 MiB (a full checksum of a multi-GB image is done on request)
     let mut file = File::open(path)?;
     let mut buffer = vec![0u8; (1024 * 1024).min(file_size as usize)];
     let bytes_read = file.read(&mut buffer).unwrap_or(0);
@@ -47,7 +48,8 @@ pub async fn analyze_image(path: &Path) -> Result<IsoAnalysis> {
         sha256: sample_hashes.sha256,
         sha512: sample_hashes.sha512,
         md5: sample_hashes.md5,
-        status: VerificationStatus::Verified,
+        // Nothing has been compared against the publisher's checksum yet.
+        status: VerificationStatus::Unverified,
     };
 
     // 3. Identify OS (from volume label if ISO, or file name)
@@ -79,6 +81,20 @@ pub async fn analyze_image(path: &Path) -> Result<IsoAnalysis> {
             || os_info.display_name.contains("Debian")
             || os_info.display_name.contains("Pop"));
 
+    let device_guidance = targets::evaluate_targets(&os_info, &architecture, &boot_info);
+
+    let mut warnings = Vec::new();
+    if os_info.family == OsFamily::MacOs {
+        warnings.push(
+            "macOS installers cannot be started from the multi-boot menu. Create a dedicated installer drive \
+             with `bootforge macos-installer` (uses Apple's createinstallmedia)."
+                .to_string(),
+        );
+    }
+    if file_size == 0 {
+        warnings.push("The file is empty (0 bytes); copy it again.".to_string());
+    }
+
     let id = format!("iso-{}", uuid::Uuid::new_v4().to_string().chars().take(8).collect::<String>());
 
     Ok(IsoAnalysis {
@@ -96,6 +112,7 @@ pub async fn analyze_image(path: &Path) -> Result<IsoAnalysis> {
         boot_strategy,
         supports_persistence,
         analyzed_at: Utc::now(),
-        warnings: vec![],
+        warnings,
+        device_guidance,
     })
 }

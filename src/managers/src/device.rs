@@ -63,6 +63,136 @@ pub struct DeviceDetailsAnalysis {
     pub recommendation: String,
 }
 
+// ── Write-target safety guard ─────────────────────────────────────
+
+/// Decide whether a whole disk must never be written, from its `diskutil info` text.
+///
+/// Returns `Some(reason)` when the disk is protected. `protected_wholes` lists whole
+/// disks that host the running system or BootForge itself (see [`protected_whole_disks`]).
+pub fn protection_reason_from_info(
+    disk_id: &str,
+    info: &str,
+    protected_wholes: &[String],
+    allow_disk_images: bool,
+) -> Option<String> {
+    let field = |name: &str| -> Option<String> {
+        info.lines().find_map(|l| {
+            let (k, v) = l.split_once(':')?;
+            (k.trim() == name).then(|| v.trim().to_string())
+        })
+    };
+
+    if info.trim().is_empty() {
+        return Some(format!("{disk_id} was not found. Re-plug the drive and refresh."));
+    }
+    if protected_wholes.iter().any(|w| w == disk_id) {
+        return Some(format!(
+            "{disk_id} holds the running macOS system or BootForge itself. Choose a different drive."
+        ));
+    }
+    if field("Whole").is_some_and(|v| v.eq_ignore_ascii_case("no")) {
+        return Some(format!("{disk_id} is a partition, not a whole drive. Select the drive itself."));
+    }
+    let protocol = field("Protocol").unwrap_or_default().to_lowercase();
+    if protocol.contains("disk image") {
+        return (!allow_disk_images)
+            .then(|| format!("{disk_id} is a mounted disk image, not a physical drive."));
+    }
+    if field("Internal").is_some_and(|v| v.eq_ignore_ascii_case("yes"))
+        || field("Device Location").is_some_and(|v| v.to_lowercase().contains("internal"))
+    {
+        return Some(format!("{disk_id} is an internal drive. BootForge only writes to external drives."));
+    }
+    if field("Read-Only Media").is_some_and(|v| v.eq_ignore_ascii_case("yes")) {
+        return Some(format!("{disk_id} is read-only (check the drive's lock switch)."));
+    }
+    let external = field("Device Location").is_some_and(|v| v.to_lowercase().contains("external"))
+        || field("Removable Media").is_some_and(|v| {
+            let v = v.to_lowercase();
+            v.contains("removable") || v == "yes"
+        })
+        || protocol.contains("usb");
+    if !external {
+        return Some(format!("{disk_id} is not reported as an external/removable drive."));
+    }
+    None
+}
+
+/// Whole disks that host `/`, the BootForge executable, or the current directory.
+#[cfg(target_os = "macos")]
+pub fn protected_whole_disks() -> Vec<String> {
+    let mut paths = vec![std::path::PathBuf::from("/")];
+    if let Ok(exe) = std::env::current_exe() {
+        paths.push(exe);
+    }
+    if let Ok(cwd) = std::env::current_dir() {
+        paths.push(cwd);
+    }
+    let mut out: Vec<String> = Vec::new();
+    for p in paths {
+        let Ok(df) = Command::new("df").arg("-P").arg(&p).output() else { continue };
+        let text = String::from_utf8_lossy(&df.stdout);
+        let Some(dev) = text.lines().nth(1).and_then(|l| l.split_whitespace().next()) else { continue };
+        for whole in whole_disks_backing(dev.trim_start_matches("/dev/")) {
+            if !out.contains(&whole) {
+                out.push(whole);
+            }
+        }
+    }
+    out
+}
+
+/// The whole disk(s) that physically back a device node, following APFS containers.
+#[cfg(target_os = "macos")]
+fn whole_disks_backing(dev: &str) -> Vec<String> {
+    let Ok(o) = Command::new("diskutil").args(["info", dev]).output() else { return vec![] };
+    let info = String::from_utf8_lossy(&o.stdout);
+    let get = |name: &str| {
+        info.lines().find_map(|l| {
+            let (k, v) = l.split_once(':')?;
+            (k.trim() == name).then(|| v.trim().to_string())
+        })
+    };
+    let mut out = Vec::new();
+    if let Some(whole) = get("Part of Whole") {
+        out.push(whole);
+    }
+    if let Some(store) = get("APFS Physical Store") {
+        // e.g. "disk0s2" → "disk0"
+        if let Some(rest) = store.strip_prefix("disk") {
+            let cut = rest.find('s').unwrap_or(rest.len());
+            out.push(format!("disk{}", &rest[..cut]));
+        }
+    }
+    out
+}
+
+/// Full safety check for a write target. `Ok(())` means the drive may be erased.
+#[cfg(target_os = "macos")]
+pub fn ensure_safe_write_target(disk_id: &str) -> std::result::Result<(), String> {
+    let clean = disk_id.trim_start_matches("/dev/").replace("rdisk", "disk");
+    if !clean.starts_with("disk") || !clean[4..].chars().all(|c| c.is_ascii_digit()) || clean.len() == 4 {
+        return Err(format!("'{disk_id}' is not a whole-disk identifier (expected e.g. disk6)."));
+    }
+    let info = Command::new("diskutil")
+        .args(["info", &clean])
+        .output()
+        .map(|o| String::from_utf8_lossy(&o.stdout).to_string())
+        .unwrap_or_default();
+    let allow_images = std::env::var("BOOTFORGE_ALLOW_DISK_IMAGES").as_deref() == Ok("1");
+    match protection_reason_from_info(&clean, &info, &protected_whole_disks(), allow_images) {
+        Some(reason) => Err(reason),
+        None => Ok(()),
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn ensure_safe_write_target(disk_id: &str) -> std::result::Result<(), String> {
+    Err(format!(
+        "Writing {disk_id} is only implemented on macOS in this build. On Linux use Ventoy2Disk.sh from the bundled ventoy_core."
+    ))
+}
+
 /// Scan and list all connected storage devices.
 /// On macOS, uses `diskutil` to accurately discover physical USB and external drives.
 pub fn scan_devices() -> Vec<StorageDevice> {
@@ -117,12 +247,13 @@ pub fn scan_devices_macos() -> Vec<StorageDevice> {
         }
     }
 
+    let protected_wholes = protected_whole_disks();
     for id in disk_ids {
         if is_disk_image.contains(&id) {
             continue;
         }
 
-        if let Some(device) = inspect_disk_macos(&id, &is_synthesized) {
+        if let Some(device) = inspect_disk_macos(&id, &is_synthesized, &protected_wholes) {
             devices.push(device);
         }
     }
@@ -225,7 +356,7 @@ pub fn analyze_storage_device(disk_id: &str) -> Option<DeviceDetailsAnalysis> {
         }
     }
 
-    if clean_id == "disk0" || clean_id == "disk1" || clean_id == "disk2" || clean_id == "disk3" || !is_external {
+    if !is_external || protection_reason_from_info(&clean_id, &text, &protected_whole_disks(), false).is_some() {
         is_system = true;
     }
 
@@ -566,7 +697,11 @@ pub fn analyze_storage_device(disk_id: &str) -> Option<DeviceDetailsAnalysis> {
 }
 
 #[cfg(target_os = "macos")]
-fn inspect_disk_macos(disk_id: &str, synthesized_set: &std::collections::HashSet<String>) -> Option<StorageDevice> {
+fn inspect_disk_macos(
+    disk_id: &str,
+    synthesized_set: &std::collections::HashSet<String>,
+    protected_wholes: &[String],
+) -> Option<StorageDevice> {
     let output = Command::new("diskutil")
         .args(["info", disk_id])
         .output()
@@ -663,14 +798,8 @@ fn inspect_disk_macos(disk_id: &str, synthesized_set: &std::collections::HashSet
         return None;
     }
 
-    // Strict internal / system drive safety guard
-    if disk_id == "disk0" || disk_id == "disk1" || disk_id == "disk2" || disk_id == "disk3" {
-        is_system = true;
-    }
-    if protocol.to_lowercase().contains("apple fabric") || protocol.to_lowercase().contains("pci-express") && !is_external {
-        is_system = true;
-    }
-    if !is_external {
+    // Strict safety guard: internal drives, the boot disk and the disk BootForge runs from are locked.
+    if protection_reason_from_info(disk_id, &text, protected_wholes, false).is_some() {
         is_system = true;
     }
 

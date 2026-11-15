@@ -1,63 +1,40 @@
 #!/bin/bash
-set -e
+# Re-install the Legacy BIOS boot code on an existing BootForge drive.
+# Fixes "blinking cursor" on old PCs (ThinkPad R400/T420, Core 2 era, any BIOS/CSM machine).
+# Only sector 0 boot code and the 1 MB gap before partition 1 are rewritten; files are kept.
+set -euo pipefail
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$DIR"
 
 echo "================================================================"
-echo " ⚡ BOTDIGIT BOOTFORGE — LEGACY BIOS MBR BOOTSTRAP WRITER"
-echo " (Enables boot on ThinkPad R400/T420 & older Legacy BIOS PCs)"
+echo " BootForge — Fix Legacy BIOS boot (old PCs)"
 echo "================================================================"
 echo ""
 
-# Find the target USB drive
-TARGET_DISK=$(diskutil list | grep -B 2 "BOTDIGIT" | grep "/dev/disk" | awk '{print $1}' | head -n 1)
-
-if [ -z "$TARGET_DISK" ]; then
-    TARGET_DISK="/dev/disk6"
+HELPER=""
+for c in "$DIR/dist/BootForge.app/Contents/MacOS/write_mbr_core" "$DIR/target/release/write_mbr_core" "$DIR/target/debug/write_mbr_core"; do
+    if [ -x "$c" ]; then HELPER="$c"; break; fi
+done
+if [ -z "$HELPER" ]; then
+    echo "Building the disk helper..."
+    cargo build --release --bin write_mbr_core
+    HELPER="$DIR/target/release/write_mbr_core"
 fi
 
-CLEAN_ID=$(echo "$TARGET_DISK" | sed 's|/dev/||' | sed 's|rdisk|disk|')
-RAW_DEV="/dev/r${CLEAN_ID}"
-
-echo "Target USB Drive detected: $TARGET_DISK ($RAW_DEV)"
-echo "This will install GRUB stage 1 (boot.img) to Sector 0 and stage 2 (core.img) to sectors 1-2047."
+echo "External drives:"
+diskutil list external physical
 echo ""
-echo "Please enter your macOS password when prompted below:"
-echo ""
-
-# Assets paths
-ASSETS="$DIR/src/managers/assets/ventoy_core/boot"
-BOOT_IMG="$ASSETS/boot.img"
-CORE_XZ="$ASSETS/core.img.xz"
-
-if [ ! -f "$BOOT_IMG" ] || [ ! -f "$CORE_XZ" ]; then
-    echo "❌ Error: Could not find boot.img or core.img.xz in $ASSETS"
+read -r -p "Disk to fix (e.g. disk6): " DISK
+DISK="${DISK#/dev/}"
+if [[ ! "$DISK" =~ ^disk[0-9]+$ ]]; then
+    echo "Not a whole-disk name: '$DISK'. Nothing was written."
     exit 1
 fi
 
-# 1. Unmount target disk
-echo "1. Unmounting $CLEAN_ID..."
-diskutil unmountDisk force "$CLEAN_ID"
-
-# 2. Write Sector 0 MBR Bootstrap (first 446 bytes, preserving partition table)
-echo "2. Writing Sector 0 MBR bootstrap code (446 bytes)..."
-sudo dd if="$BOOT_IMG" of="$RAW_DEV" bs=1 count=446 conv=notrunc status=none
-
-# 3. Write Sectors 1..2047 post-MBR gap (GRUB core.img)
-echo "3. Writing Sectors 1..2047 Post-MBR GRUB2 Core..."
-xzcat "$CORE_XZ" | sudo dd of="$RAW_DEV" bs=512 seek=1 count=2047 conv=notrunc status=none
-
-# 4. Sync and remount
-echo "4. Remounting volumes..."
-diskutil mountDisk "$CLEAN_ID" || true
+# The helper refuses internal drives, the macOS disk, and non-BootForge drives.
+sudo "$HELPER" "/dev/$DISK"
 
 echo ""
-echo "================================================================"
-echo " ✅ SUCCESS: Legacy BIOS bootstrap is now active on $TARGET_DISK!"
-echo " Your ThinkPad R400 / Legacy BIOS PC will now boot without"
-echo " any blinking cursor!"
-echo "================================================================"
-echo ""
-echo "Press any key to exit..."
-read -n 1 -s
+echo "Done. Boot the old PC from the plain USB entry (not 'UEFI:')."
+read -n 1 -s -r -p "Press any key to close..."

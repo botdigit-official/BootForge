@@ -12,6 +12,7 @@
 //! - 1-Click Non-Destructive Boot Repair
 //! - USB Micro File Manager
 
+pub mod boot_layout;
 pub mod device;
 pub mod download;
 pub mod file_manager;

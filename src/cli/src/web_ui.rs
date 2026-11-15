@@ -672,9 +672,8 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
             <div style="display: flex; flex-direction: column; gap: 6px;">
               <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); font-family: var(--font-mono);">SETUP & FORMAT MODE</span>
               <select id="optSetupMode" class="btn-secondary" style="width: 100%;">
-                <option value="fresh_multiboot" selected>🔄 Fresh Format (Create BOTDIGIT USB)</option>
-                <option value="add_isos">⚡ Non-Destructive (Keep Files & Inject Boot)</option>
-                <option value="raw_flash">🧼 Single-OS Flash (Raw DD Mode)</option>
+                <option value="fresh_multiboot" selected>🔄 New drive (erase &amp; make bootable)</option>
+                <option value="add_isos">➕ Add images to an existing BootForge drive</option>
               </select>
             </div>
 
@@ -684,18 +683,12 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 6px;">
-              <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); font-family: var(--font-mono);">TARGET PC & BOOT ARCHITECTURE</span>
-              <div style="display: flex; gap: 6px;">
-                <select id="optPartitionScheme" class="btn-secondary" style="flex: 1.4;">
-                  <option value="UNIVERSAL" selected>🌟 Universal: Old PC (BIOS) + Modern (UEFI)</option>
-                  <option value="LEGACY_BIOS">📟 Old PC / Laptop (ThinkPad R400 Legacy BIOS)</option>
-                  <option value="GPT">💻 Modern PC Only (Pure UEFI / GPT)</option>
-                </select>
-                <select id="optFilesystem" class="btn-secondary" style="flex: 0.8;">
-                  <option value="ExFAT" selected>ExFAT (Mac+PC)</option>
-                  <option value="FAT32">FAT32</option>
-                  <option value="NTFS">NTFS</option>
-                </select>
+              <span style="font-size: 11px; font-weight: 700; color: var(--text-muted); font-family: var(--font-mono);">BOOTS ON</span>
+              <input type="hidden" id="optPartitionScheme" value="UNIVERSAL">
+              <input type="hidden" id="optFilesystem" value="ExFAT">
+              <div style="font-size: 11px; color: var(--text-dim); line-height: 1.5;">
+                Old PCs (Legacy BIOS) · UEFI PCs · Secure Boot PCs · 32-bit UEFI tablets · Intel Macs.<br>
+                One layout for all: exFAT data (files over 4 GB OK) + 32 MiB UEFI partition. Drives up to 2 TB.
               </div>
             </div>
           </div>
@@ -705,12 +698,12 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
             <div style="display: flex; align-items: center; gap: 8px;">
               <span style="font-size: 14px;">⚡</span>
               <div>
-                <div style="font-size: 11px; font-weight: 700; color: #E5E7EB;">ThinkPad R400 / Legacy BIOS Setup:</div>
-                <div style="font-size: 10px; color: var(--text-muted);">Writes Sector 0 MBR + Sectors 1–2047 GRUB stage 2 to eliminate blinking cursor</div>
+                <div style="font-size: 11px; font-weight: 700; color: #E5E7EB;">Old PC shows a blinking cursor?</div>
+                <div style="font-size: 10px; color: var(--text-muted);">Re-writes only the Legacy BIOS boot code. Your image files are kept.</div>
               </div>
             </div>
             <button class="btn-secondary" style="padding: 5px 12px; font-size: 11px; font-weight: 700; color: #34D399; border-color: rgba(52, 211, 153, 0.5); cursor: pointer;" onclick="injectLegacyBiosBootstrap()">
-              ⚡ 1-Click Legacy BIOS Setup
+              ⚡ Fix Legacy BIOS boot
             </button>
           </div>
 
@@ -1204,13 +1197,10 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       }
 
       const confirmed = confirm(
-        `⚡ ThinkPad R400 / Legacy BIOS Bootstrap Injector\n\n` +
-        `Target Drive: /dev/${selectedDevice}\n\n` +
-        `This will write GRUB Stage 1 to Sector 0 (MBR) and Stage 2 to Sectors 1-2047.\n` +
-        `This enables direct booting on ThinkPad R400 and older PCs without a blinking cursor.\n\n` +
-        `A macOS Terminal authorization window will open automatically.\n` +
-        `Enter your Mac password there to complete the write.\n\n` +
-        `Proceed?`
+        `Fix Legacy BIOS boot on /dev/${selectedDevice}\n\n` +
+        `Re-writes the BIOS boot code (sector 0 and the 1 MB gap before the first partition).\n` +
+        `Partitions and image files are not touched.\n\n` +
+        `macOS will ask for your administrator password. Proceed?`
       );
 
       if (!confirmed) return;
@@ -1232,17 +1222,10 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
       }
     }
 
+    // Shortcut buttons: add a known image from the local tools folder. The file is analysed
+    // for real; if it is not there you get a clear "File not found" message.
     function quickAdd(name, filename, category) {
-      selectedIsos.push({
-        display_name: name,
-        file_name: filename,
-        file_path: `/Volumes/Mac2TB/Botdigit/tools/${filename}`,
-        size: '2.88 GB',
-        size_bytes: 2_880_000_000,
-        category: category,
-        arch: 'x86_64'
-      });
-      renderSelectedIsos();
+      analyzeAndAddIso(`/Volumes/Mac2TB/Botdigit/tools/${filename}`);
     }
 
     function clearSelectedIsos() {
@@ -1318,6 +1301,8 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
           });
           renderSelectedIsos();
           showIsoIntelligence(data);
+        } else if (data.error) {
+          alert(data.error);
         }
       } catch (e) {
         console.error("Analyze error", e);
@@ -1358,8 +1343,33 @@ pub const INDEX_HTML: &str = r#"<!DOCTYPE html>
               <div class="progress-track" style="height: 6px;"><div class="progress-bar-fill" style="width: ${data.secure_boot_score || 80}%;"></div></div>
             </div>
           </div>
+          ${(data.warnings || []).map(w => `<div style="margin-top:10px; font-size:12px; color:#FCD34D;">⚠️ ${escapeHtml(w)}</div>`).join('')}
+          ${renderDeviceGuidance(data.device_guidance || [])}
         </div>
       `;
+    }
+
+    function escapeHtml(t) {
+      return String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    // "Will it boot?" — one row per device class, steps expand on click.
+    function renderDeviceGuidance(list) {
+      if (!list.length) return '';
+      const icon = v => v === 'Works' ? '✅' : (v === 'WorksWithSteps' ? '🟡' : '❌');
+      const rows = list.map(t => `
+        <details style="border-top:1px solid rgba(148,163,184,0.15); padding:6px 0;">
+          <summary style="cursor:pointer; font-size:12px; list-style:none; display:flex; gap:8px;">
+            <span>${icon(t.verdict)}</span>
+            <span style="font-weight:700; min-width:0;">${escapeHtml(t.device_name)}</span>
+          </summary>
+          <div style="font-size:11px; color:var(--text-muted); margin:4px 0 0 24px;">${escapeHtml(t.summary)}</div>
+          ${t.steps.length ? `<ol style="font-size:11px; margin:4px 0 0 24px; padding-left:16px; color:var(--text-dim);">${t.steps.map(st => `<li style="margin:2px 0;">${escapeHtml(st)}</li>`).join('')}</ol>` : ''}
+        </details>`).join('');
+      return `<div style="margin-top:12px;">
+        <div style="font-size:12px; font-weight:700; color:var(--text-dim); margin-bottom:4px;">WILL IT BOOT? (tap a device for steps)</div>
+        ${rows}
+      </div>`;
     }
 
     function openSelectedMountInFinder() {

@@ -17,7 +17,8 @@ use bootforge_managers::device::{
     unmount_device_slice, DeviceDetailsAnalysis,
 };
 use bootforge_managers::file_manager::{delete_usb_file, scan_usb_files};
-use bootforge_managers::format::{format_disk_macos, install_botdigit_boot_theme};
+use bootforge_managers::device::ensure_safe_write_target;
+use bootforge_managers::format::{format_disk_macos, install_botdigit_boot_theme, sanitize_volume_label};
 use bootforge_managers::hardware::capture_hardware_snapshot;
 use bootforge_managers::repair::repair_bootloader_structure;
 use bootforge_managers::writer::{copy_image_with_progress, TransferProgress};
@@ -97,9 +98,34 @@ enum Commands {
     Format {
         /// Disk identifier (e.g. disk5 or /dev/disk5)
         id: String,
-        /// Volume label (default: BOTDIGIT)
-        #[arg(short, long, default_value = "BOTDIGIT")]
+        /// Volume label (default: BOOTFORGE)
+        #[arg(short, long, default_value = "BOOTFORGE")]
         label: String,
+        /// Skip the "type the disk name to confirm" prompt
+        #[arg(long)]
+        yes: bool,
+    },
+    /// Explain, device by device, whether an image will boot and exactly how
+    Guide {
+        /// Path to the ISO/WIM/IMG/DMG file
+        path: PathBuf,
+        /// Only show one device class (e.g. legacy64, uefi, secureboot, intelmac, t2, applesilicon)
+        #[arg(long)]
+        device: Option<String>,
+    },
+    /// List the device classes BootForge plans for (old BIOS PCs to Apple Silicon)
+    Targets,
+    /// Make a bootable macOS installer drive (separate drive; uses Apple's createinstallmedia)
+    MacosInstaller {
+        /// Path to "Install macOS <Name>.app" (download it from the App Store or `softwareupdate --fetch-full-installer`)
+        #[arg(long)]
+        app: PathBuf,
+        /// Disk identifier of the USB drive (e.g. disk6). It will be erased.
+        #[arg(long)]
+        disk: String,
+        /// Skip the "type the disk name to confirm" prompt
+        #[arg(long)]
+        yes: bool,
     },
     /// Run an automated headless QEMU boot test and print a structured report
     TestBoot {
@@ -191,23 +217,102 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     println!(" Secure Boot:   {:?}", analysis.boot_info.secure_boot);
                     println!(" Compatibility: {} (Score: {}/100)", analysis.compatibility.level, analysis.compatibility.score);
                     println!(" Strategy:      {:?}", analysis.boot_strategy);
+                    println!(" Fingerprint:   {} (first 1 MiB; compare the publisher's checksum for the full file)", &analysis.hash.sha256[..16.min(analysis.hash.sha256.len())]);
+                    for w in &analysis.warnings {
+                        println!(" ⚠️  {w}");
+                    }
                     println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                    println!(" Will it boot?");
+                    for t in &analysis.device_guidance {
+                        println!("  {} {:<36} {}", verdict_icon(t.verdict), t.device_name, t.summary);
+                    }
+                    println!("\n Run `bootforge guide \"{}\"` for step-by-step instructions.", path.display());
                 }
                 Err(e) => {
                     eprintln!("❌ Failed to analyze image: {}", e);
                 }
             }
         }
-        Some(Commands::Format { id, label }) => {
-            println!("⚡ Formatting drive /dev/{} with Universal Multi-Boot Layout (Label: {})...", id, label);
-            match format_disk_macos(&id, "MBR", "ExFAT", &label) {
+        Some(Commands::Format { id, label, yes }) => {
+            let clean = id.trim_start_matches("/dev/").replace("rdisk", "disk");
+            if let Err(reason) = ensure_safe_write_target(&clean) {
+                eprintln!("❌ Refusing to write /dev/{clean}: {reason}");
+                std::process::exit(1);
+            }
+            if !yes {
+                println!("⚠️  ALL DATA on /dev/{clean} will be erased.");
+                print!("Type the disk name ({clean}) to continue: ");
+                use std::io::Write as _;
+                std::io::stdout().flush().ok();
+                let mut answer = String::new();
+                std::io::stdin().read_line(&mut answer).ok();
+                if answer.trim() != clean {
+                    println!("Cancelled. Nothing was written.");
+                    return Ok(());
+                }
+            }
+            println!("⚡ Creating BootForge drive on /dev/{clean} (an administrator password prompt will appear)...");
+            match format_disk_macos(&clean, "MBR", "ExFAT", &label) {
                 Ok(msg) => {
-                    println!("✅ Successfully formatted /dev/{}!\n{}", id, msg);
-                    println!("🎉 Drive is now ready to boot! You can drag ISO files into /Volumes/{}/images/", label);
+                    println!("✅ {msg}");
+                    println!("Next: copy .iso/.wim/.vhd/.img files onto the drive, then boot from it.");
+                    println!("Run `bootforge guide <image.iso>` to see how to boot each image on your devices.");
                 }
                 Err(e) => {
-                    eprintln!("❌ Failed to format /dev/{}: {}", id, e);
+                    eprintln!("❌ Failed to create drive on /dev/{clean}: {e}");
+                    std::process::exit(1);
                 }
+            }
+        }
+        Some(Commands::Guide { path, device }) => {
+            let analysis = match analyze_image(&path).await {
+                Ok(a) => a,
+                Err(e) => {
+                    eprintln!("❌ Cannot read {}: {e}", path.display());
+                    std::process::exit(1);
+                }
+            };
+            println!("\n{} — {} ({})\n", analysis.os_info.display_name, analysis.architecture, analysis.file_name);
+            for w in &analysis.warnings {
+                println!("⚠️  {w}\n");
+            }
+            let filter = match device.as_deref() {
+                None => None,
+                Some(d) => match device_alias(d) {
+                    Some(c) => Some(c),
+                    None => {
+                        eprintln!("Unknown device '{d}'. Use one of: old32, old64, uefi, secureboot, uefi32, intelmac, t2, applesilicon, arm64");
+                        std::process::exit(2);
+                    }
+                },
+            };
+            for t in &analysis.device_guidance {
+                if filter.is_some_and(|c| c != t.device) {
+                    continue;
+                }
+                let profile = bootforge_analyzers::targets::DEVICE_PROFILES.iter().find(|p| p.class == t.device);
+                println!("{} {} — {}", verdict_icon(t.verdict), t.device_name, t.verdict);
+                if let Some(p) = profile {
+                    println!("   e.g. {}", p.examples);
+                }
+                println!("   {}", t.summary);
+                for (i, step) in t.steps.iter().enumerate() {
+                    println!("   {}. {}", i + 1, step);
+                }
+                println!();
+            }
+        }
+        Some(Commands::Targets) => {
+            println!("Device classes BootForge plans for:\n");
+            for p in bootforge_analyzers::targets::DEVICE_PROFILES {
+                println!("• {}\n    examples: {}\n    boot:     {}\n", p.name, p.examples, p.how_to_boot);
+            }
+            println!("{}", bootforge_analyzers::targets::PC_BOOT_KEYS);
+        }
+        Some(Commands::MacosInstaller { app, disk, yes }) => {
+            if let Err(e) = make_macos_installer(&app, &disk, yes) {
+                eprintln!("❌ {e}");
+                std::process::exit(1);
             }
         }
         Some(Commands::TestBoot { id, uefi, timeout }) => {
@@ -466,20 +571,82 @@ async fn api_repair_bootloader(Json(req): Json<RepairBootloaderRequest>) -> Json
     Json(result)
 }
 
-fn resolve_write_mbr_core_path() -> PathBuf {
-    if let Ok(curr) = std::env::current_exe() {
-        if let Some(parent) = curr.parent() {
-            let candidate = parent.join("write_mbr_core");
-            if candidate.exists() {
-                return candidate;
-            }
+/// Short names accepted by `bootforge guide --device`.
+fn device_alias(name: &str) -> Option<bootforge_core::types::DeviceClass> {
+    use bootforge_core::types::DeviceClass::*;
+    let n = name.to_lowercase().replace(['-', '_', ' '], "");
+    Some(match n.as_str() {
+        "old32" | "legacy32" | "legacybios32" | "32bit" | "netbook" => LegacyBios32,
+        "old64" | "old" | "legacy" | "legacy64" | "legacybios64" | "bios" | "csm" => LegacyBios64,
+        "uefi" | "uefipc" | "pc" => UefiPc,
+        "secureboot" | "sb" | "modern" | "win11pc" => UefiSecureBoot,
+        "uefi32" | "tablet" | "baytrail" => Uefi32,
+        "intelmac" | "mac" | "imac" | "macbook" => IntelMac,
+        "t2" | "intelmact2" => IntelMacT2,
+        "applesilicon" | "m1" | "m2" | "m3" | "m4" | "arm64mac" => AppleSilicon,
+        "arm64" | "arm" | "aarch64" | "snapdragon" => Arm64Uefi,
+        _ => return None,
+    })
+}
+
+fn verdict_icon(v: bootforge_core::types::BootVerdict) -> &'static str {
+    use bootforge_core::types::BootVerdict::*;
+    match v {
+        Works => "✅",
+        WorksWithSteps => "🟡",
+        NotSupported => "❌",
+    }
+}
+
+/// Create a macOS installer USB with Apple's own `createinstallmedia`.
+fn make_macos_installer(app: &std::path::Path, disk: &str, yes: bool) -> Result<(), String> {
+    let tool = app.join("Contents/Resources/createinstallmedia");
+    if !tool.exists() {
+        return Err(format!(
+            "{} is not a macOS installer app (no Contents/Resources/createinstallmedia).\n   \
+             Get one with: softwareupdate --list-full-installers ; softwareupdate --fetch-full-installer --full-installer-version <version>",
+            app.display()
+        ));
+    }
+    let clean = disk.trim_start_matches("/dev/").replace("rdisk", "disk");
+    ensure_safe_write_target(&clean)?;
+    if !yes {
+        println!("⚠️  ALL DATA on /dev/{clean} will be erased to create a macOS installer.");
+        print!("Type the disk name ({clean}) to continue: ");
+        use std::io::Write as _;
+        std::io::stdout().flush().ok();
+        let mut answer = String::new();
+        std::io::stdin().read_line(&mut answer).ok();
+        if answer.trim() != clean {
+            println!("Cancelled. Nothing was written.");
+            return Ok(());
         }
     }
-    let default_path = PathBuf::from("/Volumes/Mac2TB/Botdigit/Developer/Projects/BootForge/target/release/write_mbr_core");
-    if default_path.exists() {
-        return default_path;
+    println!("1/2 Erasing /dev/{clean} as Mac OS Extended (GPT)...");
+    let erase = Command::new("diskutil")
+        .args(["eraseDisk", "JHFS+", "MACINSTALL", "GPT", &clean])
+        .status()
+        .map_err(|e| e.to_string())?;
+    if !erase.success() {
+        return Err(format!("diskutil eraseDisk failed on /dev/{clean}"));
     }
-    PathBuf::from("/Volumes/Mac2TB/Botdigit/Developer/Projects/BootForge/target/debug/write_mbr_core")
+    println!("2/2 Running Apple's createinstallmedia (takes 10–30 minutes; enter your password if asked)...");
+    let status = Command::new("sudo")
+        .arg(&tool)
+        .args(["--volume", "/Volumes/MACINSTALL", "--nointeraction"])
+        .status()
+        .map_err(|e| e.to_string())?;
+    if !status.success() {
+        return Err("createinstallmedia failed (see the messages above)".to_string());
+    }
+    println!("✅ macOS installer drive ready.");
+    println!("   Intel Mac: hold Option (⌥) at power on.  T2 Mac: first allow external boot in Startup Security Utility.");
+    println!("   Apple Silicon: shut down, hold the power button until startup options appear.");
+    Ok(())
+}
+
+fn resolve_write_mbr_core_path() -> PathBuf {
+    bootforge_managers::format::resolve_disk_helper_path()
 }
 
 #[derive(Deserialize)]
@@ -496,51 +663,34 @@ struct InjectLegacyMbrResponse {
 async fn api_inject_legacy_mbr(Json(req): Json<InjectLegacyMbrRequest>) -> Json<InjectLegacyMbrResponse> {
     let clean_id = req.disk_id.trim_start_matches("/dev/").replace("rdisk", "disk");
 
-    // Internal safety check
-    if clean_id == "disk0" || clean_id == "disk1" || clean_id == "disk2" || clean_id == "disk3" {
-        return Json(InjectLegacyMbrResponse {
-            success: false,
-            message: "Protected internal drive cannot be modified.".to_string(),
-        });
-    }
-
-    let bin = resolve_write_mbr_core_path();
-    if !bin.exists() {
-        let _ = Command::new("cargo")
-            .args(["build", "--release", "--bin", "write_mbr_core"])
-            .current_dir("/Volumes/Mac2TB/Botdigit/Developer/Projects/BootForge")
-            .output();
-    }
-
-    let script = format!(
-        r#"tell application "Terminal"
-            activate
-            do script "echo '================================================================'; echo ' ⚡ BOTDIGIT BOOTFORGE — LEGACY BIOS MBR BOOTSTRAP'; echo ' Writing Sector 0 & Post-MBR Gap for ThinkPad R400...'; echo ' Target Device: /dev/{disk}'; echo '================================================================'; sudo '{bin}' '/dev/{disk}'; echo ''; echo '✅ SUCCESS: ThinkPad R400 Legacy BIOS MBR active! Press Enter to close.'; read; exit"
-        end tell"#,
-        bin = bin.display(),
-        disk = clean_id
-    );
-
-    match Command::new("osascript").args(["-e", &script]).output() {
-        Ok(res) if res.status.success() => {
-            Json(InjectLegacyMbrResponse {
-                success: true,
-                message: format!("Terminal authorization prompt launched for /dev/{}. Enter your macOS password to activate ThinkPad R400 Legacy BIOS booting!", clean_id),
-            })
+    let result = tokio::task::spawn_blocking(move || -> Result<String, String> {
+        ensure_safe_write_target(&clean_id)?;
+        let bin = resolve_write_mbr_core_path();
+        if !bin.exists() {
+            return Err(format!(
+                "Disk helper not found at {}. Build it with: cargo build --release --bin write_mbr_core",
+                bin.display()
+            ));
         }
-        Ok(res) => {
-            let err = String::from_utf8_lossy(&res.stderr);
-            Json(InjectLegacyMbrResponse {
-                success: false,
-                message: format!("Failed to launch Terminal authorization: {}", err),
-            })
+        #[cfg(target_os = "macos")]
+        {
+            let cmd = format!("'{}' '/dev/{}'", bin.display(), clean_id);
+            bootforge_managers::format::run_as_admin_macos(
+                &cmd,
+                &format!("BootForge needs to re-install the Legacy BIOS boot code on /dev/{clean_id}."),
+            )
         }
-        Err(e) => {
-            Json(InjectLegacyMbrResponse {
-                success: false,
-                message: format!("Error executing system command: {}", e),
-            })
+        #[cfg(not(target_os = "macos"))]
+        {
+            Err("Only supported on macOS in this build".to_string())
         }
+    })
+    .await
+    .unwrap_or_else(|e| Err(e.to_string()));
+
+    match result {
+        Ok(msg) => Json(InjectLegacyMbrResponse { success: true, message: msg.trim().to_string() }),
+        Err(e) => Json(InjectLegacyMbrResponse { success: false, message: e }),
     }
 }
 
@@ -782,7 +932,7 @@ async fn api_create_boot_drive(Json(req): Json<CreateBootDriveRequest>) -> Json<
     let mode = req.mode.clone();
     let scheme = req.partition_scheme.clone();
     let fs_type = req.filesystem.clone();
-    let label = req.volume_label.clone();
+    let label = sanitize_volume_label(&req.volume_label);
 
     let task_clean_id = clean_id.clone();
     let task_label = label.clone();
@@ -811,15 +961,21 @@ async fn api_create_boot_drive(Json(req): Json<CreateBootDriveRequest>) -> Json<
         if mode == "fresh_multiboot" {
             let mut p = get_progress().lock().unwrap();
             p.percentage = 10.0;
-            p.phase = format!("Formatting drive as {} ({}) with name {}...", fs_type, scheme, label);
-            p.logs.push(format!("[{}] Erasing /dev/{} -> GPT + {}", chrono_time(), clean_id, fs_type));
+            p.phase = format!("Erasing and writing boot structures (name {})… approve the password prompt", label);
+            p.logs.push(format!(
+                "[{}] Erasing /dev/{} -> MBR (BIOS boot code) + exFAT data + 32 MiB UEFI partition",
+                chrono_time(),
+                clean_id
+            ));
             drop(p);
 
             match format_disk_macos(&clean_id, &scheme, &fs_type, &label) {
-                Ok(_msg) => {
+                Ok(msg) => {
                     let mut p = get_progress().lock().unwrap();
                     p.percentage = 25.0;
-                    p.logs.push(format!("[{}] ✓ Partition map and {} volume created cleanly.", chrono_time(), label));
+                    for line in msg.lines() {
+                        p.logs.push(format!("[{}] ✓ {}", chrono_time(), line));
+                    }
                     drop(p);
                 }
                 Err(err) => {
@@ -841,27 +997,24 @@ async fn api_create_boot_drive(Json(req): Json<CreateBootDriveRequest>) -> Json<
         };
 
         let mount_path = PathBuf::from(&mount_dir);
+        let mut failed: Vec<String> = Vec::new();
 
-        // Step 3: Install Botdigit BootForge Theme & EFI Config
+        // Step 3: Install BootForge configuration (theme, options, F6 tools page)
         if mount_path.exists() {
             let mut p = get_progress().lock().unwrap();
             p.percentage = 35.0;
-            p.phase = "Injecting Botdigit BootForge EFI bootloader and GRUB themes...".to_string();
-            p.logs.push(format!("[{}] Injecting /EFI/BOOT/ and /bootforge/ themes onto {}", chrono_time(), mount_dir));
+            p.phase = "Installing BootForge menu theme and tools page...".to_string();
+            p.logs.push(format!("[{}] Writing /ventoy/ theme, options and F6 tools page on {}", chrono_time(), mount_dir));
             drop(p);
 
-            let _ = install_botdigit_boot_theme(&mount_path, &theme_title, &label);
+            if let Err(e) = install_botdigit_boot_theme(&mount_path, &theme_title, &label) {
+                failed.push(format!("configuration ({e})"));
+            }
 
             // Step 4: Physically copy selected ISOs to destination
             let total_isos = isos.len();
             for (idx, iso) in isos.iter().enumerate() {
-                let category = if iso.file_name.to_lowercase().contains("win") {
-                    "windows"
-                } else if iso.file_name.to_lowercase().contains("clone") || iso.file_name.to_lowercase().contains("rescue") || iso.file_name.to_lowercase().contains("gpart") {
-                    "rescue"
-                } else {
-                    "linux"
-                };
+                let category = image_folder_for(&iso.file_name);
 
                 let target_dir = mount_path.join("images").join(category);
                 let _ = fs::create_dir_all(&target_dir);
@@ -876,8 +1029,14 @@ async fn api_create_boot_drive(Json(req): Json<CreateBootDriveRequest>) -> Json<
                 drop(p);
 
                 let src = PathBuf::from(&iso.file_path);
-                if src.exists() && src.is_file() {
-                    let _ = copy_image_with_progress(&src, &dest_file, |written, total, speed, eta| {
+                let outcome = if !src.is_file() {
+                    Err(format!("source file not found: {}", iso.file_path))
+                } else if dest_file.exists()
+                    && fs::metadata(&dest_file).map(|m| m.len()).ok() == fs::metadata(&src).map(|m| m.len()).ok()
+                {
+                    Ok("already on the drive".to_string())
+                } else {
+                    copy_image_with_progress(&src, &dest_file, |written, total, speed, eta| {
                         let mut p = get_progress().lock().unwrap();
                         let base_pct = 40.0 + ((idx as f32 / total_isos as f32) * 55.0);
                         let sub_pct = if total > 0 { (written as f32 / total as f32) * (55.0 / total_isos as f32) } else { 0.0 };
@@ -886,43 +1045,33 @@ async fn api_create_boot_drive(Json(req): Json<CreateBootDriveRequest>) -> Json<
                         p.total_bytes = total;
                         p.speed_mbps = speed;
                         p.eta_seconds = eta;
-                    });
-                } else {
-                    // Create populated verified image
-                    let header = format!(
-                        "# Botdigit BootForge Verified OS Boot Image\nOS: {}\nFile: {}\nFormat: ISO9660\nBoot: UEFI + BIOS\nStatus: Verified ✓\n",
-                        iso.display_name, iso.file_name
-                    );
-                    let _ = fs::write(&dest_file, header.as_bytes());
-                }
+                    })
+                    .map(|_| "copied".to_string())
+                    .map_err(|e| e.to_string())
+                };
 
                 let mut p = get_progress().lock().unwrap();
-                p.logs.push(format!("[{}] ✓ Successfully written & verified: {}", chrono_time(), iso.display_name));
+                match outcome {
+                    Ok(how) => p.logs.push(format!("[{}] ✓ {}: {}", chrono_time(), iso.display_name, how)),
+                    Err(e) => {
+                        failed.push(iso.display_name.clone());
+                        p.logs.push(format!("[{}] ❌ {}: {}", chrono_time(), iso.display_name, e));
+                        let _ = fs::remove_file(&dest_file);
+                    }
+                }
             }
+        } else {
+            failed.push(format!("drive not mounted at {}", mount_dir));
         }
 
-        // Step 5: If target architecture is Universal or Legacy BIOS, trigger Legacy BIOS bootstrap
-        let is_legacy = scheme.to_uppercase().contains("MBR")
-            || scheme.to_uppercase().contains("LEGACY")
-            || scheme.to_uppercase().contains("UNIVERSAL");
-
-        if is_legacy {
+        if !failed.is_empty() {
             let mut p = get_progress().lock().unwrap();
-            p.percentage = 99.0;
-            p.phase = "⚡ Authorizing ThinkPad R400 Legacy BIOS Bootstrap...".to_string();
-            p.logs.push(format!("[{}] ⚡ Launching Terminal authorization to write Sector 0 MBR & Sectors 1-2047 Core...", chrono_time()));
-            drop(p);
-
-            let bin = resolve_write_mbr_core_path();
-            let script = format!(
-                r#"tell application "Terminal"
-                    activate
-                    do script "echo '================================================================'; echo ' ⚡ BOTDIGIT BOOTFORGE — LEGACY BIOS MBR BOOTSTRAP'; echo ' Target: /dev/{disk} (ThinkPad R400 / Legacy BIOS)'; echo '================================================================'; sudo '{bin}' '/dev/{disk}'; echo ''; echo '✅ SUCCESS: Legacy BIOS MBR active! Press Enter to close.'; read; exit"
-                end tell"#,
-                bin = bin.display(),
-                disk = clean_id
-            );
-            let _ = Command::new("osascript").args(["-e", &script]).output();
+            p.is_running = false;
+            p.is_error = true;
+            p.percentage = 100.0;
+            p.phase = "Finished with errors".to_string();
+            p.message = format!("Not copied: {}", failed.join(", "));
+            return;
         }
 
         let mut p = get_progress().lock().unwrap();
@@ -931,8 +1080,8 @@ async fn api_create_boot_drive(Json(req): Json<CreateBootDriveRequest>) -> Json<
         p.percentage = 100.0;
         p.speed_mbps = 0.0;
         p.eta_seconds = 0;
-        p.phase = "✨ Botdigit Multi-Boot USB Ready!".to_string();
-        p.message = "All configurations and OS image payloads verified.".to_string();
+        p.phase = "✨ BootForge drive ready".to_string();
+        p.message = "Drive is ready. Boot it with your computer's boot-menu key.".to_string();
         p.logs.push(format!("[{}] ✅ Synchronization completed. Drive is ready to boot.", chrono_time()));
     });
 
@@ -952,6 +1101,19 @@ async fn api_create_boot_drive(Json(req): Json<CreateBootDriveRequest>) -> Json<
 async fn api_transfer_progress() -> Json<TransferProgress> {
     let p = get_progress().lock().unwrap();
     Json(p.clone())
+}
+
+/// Suggested folder on the drive for an image (the boot menu finds images anywhere).
+fn image_folder_for(file_name: &str) -> &'static str {
+    use bootforge_core::types::OsFamily;
+    let info = bootforge_analyzers::os_detect::identify_os_from_label(file_name);
+    match info.family {
+        OsFamily::Windows => "windows",
+        OsFamily::Linux | OsFamily::Bsd => "linux",
+        OsFamily::MacOs => "macos-tools",
+        OsFamily::Recovery | OsFamily::Utility | OsFamily::Firmware => "rescue",
+        OsFamily::Unknown => "other",
+    }
 }
 
 fn chrono_time() -> String {
@@ -1049,6 +1211,10 @@ struct AnalyzeResponse {
     bios_score: u8,
     secure_boot_score: u8,
     arm64_score: u8,
+    #[serde(default)]
+    warnings: Vec<String>,
+    #[serde(default)]
+    device_guidance: Vec<bootforge_core::types::TargetVerdict>,
     error: Option<String>,
 }
 
@@ -1089,6 +1255,8 @@ async fn api_analyze(Json(req): Json<AnalyzeRequest>) -> Json<AnalyzeResponse> {
                     bios_score: res.compatibility.bios_score,
                     secure_boot_score: res.compatibility.secure_boot_score,
                     arm64_score: res.compatibility.arm64_score,
+                    warnings: res.warnings,
+                    device_guidance: res.device_guidance,
                     error: None,
                 })
             }
@@ -1111,47 +1279,34 @@ async fn api_analyze(Json(req): Json<AnalyzeRequest>) -> Json<AnalyzeResponse> {
                 bios_score: 0,
                 secure_boot_score: 0,
                 arm64_score: 0,
+                warnings: vec![],
+                device_guidance: vec![],
                 error: Some(e.to_string()),
             }),
         }
     } else {
-        let name = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| req.path.clone());
-        let os_name = if name.to_lowercase().contains("win") {
-            "Windows 11 (24H2)"
-        } else if name.to_lowercase().contains("mint") {
-            "Linux Mint 22.3"
-        } else if name.to_lowercase().contains("ubuntu") {
-            "Ubuntu 24.04 LTS"
-        } else if name.to_lowercase().contains("debian") {
-            "Debian 12 Bookworm"
-        } else if name.to_lowercase().contains("alpine") {
-            "Alpine Linux 3.20"
-        } else if name.to_lowercase().contains("clone") {
-            "Clonezilla Live"
-        } else {
-            "Custom OS Image"
-        };
-
         Json(AnalyzeResponse {
-            success: true,
+            success: false,
             file_path: req.path.clone(),
-            file_name: name,
-            file_size_bytes: 2_880_000_000,
-            file_size_formatted: "2.88 GB".to_string(),
-            display_name: os_name.to_string(),
-            arch: "x86_64".to_string(),
-            format: "ISO9660".to_string(),
-            uefi_capable: true,
-            secure_boot: "Supported".to_string(),
-            compat_level: "EXCELLENT".to_string(),
-            score: 100,
-            boot_strategy: "GrubLoopback".to_string(),
-            sha256_preview: "6f5e84...11d467".to_string(),
-            uefi_x64_score: 100,
-            bios_score: 100,
-            secure_boot_score: 95,
+            file_name: path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default(),
+            file_size_bytes: 0,
+            file_size_formatted: String::new(),
+            display_name: String::new(),
+            arch: String::new(),
+            format: String::new(),
+            uefi_capable: false,
+            secure_boot: String::new(),
+            compat_level: String::new(),
+            score: 0,
+            boot_strategy: String::new(),
+            sha256_preview: String::new(),
+            uefi_x64_score: 0,
+            bios_score: 0,
+            secure_boot_score: 0,
             arm64_score: 0,
-            error: None,
+            warnings: vec![],
+            device_guidance: vec![],
+            error: Some(format!("File not found: {}", req.path)),
         })
     }
 }

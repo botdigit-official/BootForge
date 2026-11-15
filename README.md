@@ -29,14 +29,58 @@
 - 🍏 **macOS Universal DMG:** [BootForge-macOS.dmg](https://boot.botdigit.site/assets/BootForge-macOS.dmg) (Apple Silicon & Intel)
 - 🪟 **Windows 64-bit EXE:** [BootForge-Setup-x64.exe](https://github.com/botdigit-official/BootForge/releases)
 - 🐧 **Linux AppImage & Deb:** [BootForge Linux Releases](https://github.com/botdigit-official/BootForge/releases)
-- 📦 **Install CLI via Cargo:**
+- 📦 **Build from source (macOS):**
   ```bash
-  cargo install bootforge-cli
+  cargo build --release --bin bootforge --bin write_mbr_core
   ```
-- ⚡ **Run Local Web Engine:**
+- ⚡ **Run the app (opens in your browser):**
   ```bash
-  cargo run -p bootforge-cli -- serve --port 41020
+  ./target/release/bootforge ui
   ```
+
+---
+
+## 🚀 Quick Start — what works today
+
+> **Full step-by-step instructions:** [docs/guides/USER_GUIDE.md](docs/guides/USER_GUIDE.md)
+
+1. **Make the drive** (erases it once; macOS asks for your password):
+   ```bash
+   bootforge devices
+   bootforge format disk6 --label BOOTFORGE
+   ```
+2. **Copy image files** (`.iso` `.wim` `.vhd(x)` `.img` `.efi`) anywhere onto the `BOOTFORGE` drive. Every file appears in the boot menu automatically — no per-image setup.
+3. **Check where an image will boot** before you walk to the machine:
+   ```bash
+   bootforge analyze ~/Downloads/ubuntu-24.04-desktop-amd64.iso
+   bootforge guide   ~/Downloads/ubuntu-24.04-desktop-amd64.iso --device old64
+   ```
+4. **Boot**: press the computer's boot-menu key (F12 Dell/Lenovo, F9 HP, F8 ASUS, F11 MSI, ⌥ on Intel Macs) and pick the USB drive. **F6** in the menu opens BootForge Tools.
+
+### What boots where
+
+| Computer | Firmware | BootForge drive | Notes |
+|---|---|---|---|
+| Very old PC, 32-bit CPU (2000–2008) | Legacy BIOS | ✅ 32-bit images | 64-bit images cannot run on these CPUs |
+| Older PC, 64-bit CPU (2006–2012, e.g. ThinkPad R400/T420) | Legacy BIOS / CSM | ✅ | BIOS boot code is written automatically; *Fix Legacy BIOS boot* repairs it |
+| UEFI PC (2012+) | UEFI | ✅ | Windows XP/Vista/7 need Legacy/CSM mode |
+| Modern PC with Secure Boot | UEFI + Secure Boot | ✅ after one-time key enrollment | Signed shim + MokManager included |
+| 32-bit UEFI tablet (Bay Trail) | UEFI IA32 | ✅ if the image ships `BOOTIA32.EFI` | |
+| Intel Mac 2008–2017 | Apple EFI | ✅ hold ⌥ → EFI Boot | Windows needs Boot Camp drivers |
+| Intel Mac with T2 (2018–2020) | Apple EFI + T2 | 🟡 allow external boot first | Linux needs a T2 kernel |
+| Apple Silicon (M1+) | iBoot (no UEFI) | ❌ x86/ARM ISOs | Use UTM/Parallels or Asahi Linux |
+| Any Mac — macOS installer | — | 🟡 separate drive | `bootforge macos-installer` (Apple's `createinstallmedia`) |
+
+### Drive layout (one layout for every device)
+
+```
+Sector 0        MBR boot code + partition table
+Sectors 1–2047  GRUB stage 2 for Legacy BIOS
+Partition 1     exFAT "BOOTFORGE" — your images (files > 4 GB OK)
+Partition 2     32 MiB "VTOYEFI"  — UEFI x64 / IA32 / ARM64 loaders, Secure Boot shim
+```
+
+Image booting is done by the bundled [Ventoy](https://www.ventoy.net) loader (GPL-3.0) in `src/managers/assets/ventoy_core`; BootForge writes the drive safely, adds device guidance, theme, tools menu and the app. Drives up to 2 TB (MBR limit).
 
 ---
 
@@ -250,7 +294,7 @@ BootForge enforces exact firmware distinctions to eliminate false universal boot
 |---|---|---|---|
 | **Standard PC (x86_64)** | UEFI 2.x / 2.11 + CSM BIOS | Direct NVRAM / El Torito / Shim | **Full Universal Multi-Boot** (GRUB2 / WIMBOOT / Direct) |
 | **Intel Mac (x86_64)** | Apple EFI (Intel UEFI 2.x) | Option-Key Bootloader (`boot.efi`) | **Full Multi-Boot** (Apple EFI Chainloader + Windows + Linux) |
-| **Apple Silicon (M1–M4)** | Apple Boot ROM $\rightarrow$ LLB/iBoot | LocalPolicy + RecoveryOS Auth | **Conditional Intelligence**: Prepares ARM64 media; explicitly informs user of RecoveryOS authorization requirements. |
+| **Apple Silicon (M1–M4)** | Apple Boot ROM $\rightarrow$ LLB/iBoot | LocalPolicy + RecoveryOS Auth | **Not bootable from the multi-boot drive** (no UEFI, no x86). BootForge says so per image and offers a separate macOS installer drive, UTM or Asahi Linux. |
 | **ARM64 PCs (Snapdragon X)**| Qualcomm UEFI 2.x + Secure Boot | UEFI AArch64 Shim (`BOOTAA64.EFI`)| **Native ARM64 Multi-Boot** (ARM64 Windows / Linux PE) |
 
 ```
@@ -426,7 +470,7 @@ bootforge/
 ### Verification Matrix
 | Phase / Component | Automated Test Suite | Physical Hardware Matrix | Status |
 |---|---|---|---|
-| **Phase 1: Rust Core & CLI** | `cargo test --workspace` (24 passing) | macOS Darwin, Win32, Linux block | **Verified** |
+| **Phase 1: Rust Core & CLI** | `cargo test --workspace` (67 passing) | macOS Darwin, Win32, Linux block | **Verified** |
 | **Phase 2: Tauri Desktop Studio** | End-to-end Tauri test harness | Windows 11, macOS M-Series, Ubuntu | **In Progress** |
 | **Phase 3: BootForge Media** | Partition layout test harness | SanDisk, Samsung NVMe, Kingston | Planned |
 | **Phase 4: Intelligence & QEMU** | Headless QEMU test harness | Intel PC, AMD PC, Apple Silicon | Planned |
@@ -440,17 +484,20 @@ bootforge/
 
 ### CLI Commands
 ```bash
-# Scan and list all storage devices with safety flags and bus speeds
-bootforge devices
+bootforge devices                          # list drives; internal/system drives are marked protected
+bootforge analyze-device disk6             # partitions, mount point, images on a drive
+bootforge format disk6 --label BOOTFORGE   # create a BootForge drive (asks to confirm + admin password)
+bootforge analyze image.iso                # OS, architecture, boot support + "will it boot?" per device
+bootforge guide image.iso --device old64   # step-by-step boot instructions for one kind of computer
+bootforge targets                          # device classes with example models and boot keys
+bootforge macos-installer --app "/Applications/Install macOS Sequoia.app" --disk disk7
+bootforge ui                               # desktop web UI (default port 4242)
+```
 
-# Deep inspect partition tables, S.M.A.R.T. health, and installed ISOs
-bootforge analyze-device disk4
-
-# Run 10-layer deep inspection on an ISO image
-bootforge analyze /path/to/ubuntu-24.04-desktop-amd64.iso
-
-# Launch the desktop web interface / REST API daemon
-bootforge ui --port 4242
+Privileged helper (run as root, used by the app):
+```bash
+write_mbr_core --full /dev/diskN LABEL     # erase + write the complete layout
+write_mbr_core /dev/diskN                  # re-install Legacy BIOS boot code only, files kept
 ```
 
 ---
@@ -458,4 +505,5 @@ bootforge ui --port 4242
 ## 📜 License & Engineering Credits
 
 Botdigit BootForge is open-source software licensed under the **[MIT License](LICENSE)**.  
+Bundled third-party components keep their own licenses: Ventoy and GRUB in `src/managers/assets/ventoy_core` are GPL-3.0 ([ventoy.net](https://www.ventoy.net), [GNU GRUB](https://www.gnu.org/software/grub/)).  
 Engineered with ⚡ by the **Botdigit Engineering Team**.
